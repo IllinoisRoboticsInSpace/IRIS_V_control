@@ -1,1 +1,22 @@
-# IRIS_V_Control
+# IRIS\_V\_Control
+
+## Installation
+1)  Go to your ROS workspace directory (e.g. `cd ~/hyrdro_workspace`)
+
+2)  Clone the repository
+
+__ssh__: `git clone git@github.com:IllinoisRoboticsInSpace/IRIS_V_control.git`
+
+__https__: `git clone https://github.com/IllinoisRoboticsInSpace/IRIS_V_control.git`
+
+3)  `rosws set IRIS_V_control`
+
+4)  `source setup.bash`
+
+## Compiling
+`rosmake <package name>`
+
+## Adding new packages
+Make sure the .gitignore contains `src/<package name>`
+
+(See "IRIS\_msgs/.gitignore")
