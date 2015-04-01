@@ -11,8 +11,7 @@ This assumes you have already followed the tutorial to create a workspace
 with rosbuild selected, replacing all instances of "fuerte" with "hydro": <br />
 http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment
 
-1)  Go to your ROS workspace directory <br />
-`roscd`
+1)  `roscd`
 
 2)  Clone the repository
 
