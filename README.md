@@ -37,6 +37,10 @@ to your .bashrc file.
 
 ## Compiling
 
+`roscd`
+
+`cd IRIS_V_control`
+
 __rosbuild__: `rosmake <package name>`
 
 __catkin__:   `catkin_make`
