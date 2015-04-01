@@ -25,7 +25,7 @@ __https__: `git clone https://github.com/IllinoisRoboticsInSpace/IRIS_V_control.
 
 3) Make sure the .gitignore contains `src/<package name>`
 
-(See "IRIS\_msgs/.gitignore")t
+(See "IRIS\_msgs/.gitignore")
 
 ## Package list
 
