@@ -43,13 +43,27 @@ __catkin__:   `catkin_make`
 
 ## Adding new packages
 
-1) `cd IRIS_V_control`
+### rosbuild
 
-2) `roscreate_pkg <package name>`
+1) `roscd`
 
-3) Make sure the .gitignore contains `src/<package name>`
+2) `cd IRIS_V_control`
+
+3) Follow the rosbuild package creation tutorial at: <br />
+http://wiki.ros.org/ROS/Tutorials/CreatingPackage
+
+4) Make sure there is a .gitignore in the package path with `src/<package name>`
 
 (See `IRIS_msgs/.gitignore`)
+
+### catkin
+
+1) `roscd`
+
+2) `cd IRIS_V_control/src`
+
+3) Follow the catkin package creation tutorial at <br />
+http://wiki.ros.org/ROS/Tutorials/CreatingPackage
 
 ## Package list
 
