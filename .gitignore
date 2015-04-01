@@ -45,3 +45,5 @@ CMakeLists.txt.user
 
 # Catkin custom files
 **/CATKIN_IGNORE
+devel/
+.catkin_workspace

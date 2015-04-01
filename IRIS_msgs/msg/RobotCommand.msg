@@ -1,7 +1,6 @@
 # Defines the desired robot state
 
 # The target location
-## Make this a PoseStamped?
 geometry_msgs/Pose goal
 
 # Desired turbine position. (TRUE = DOWN)
