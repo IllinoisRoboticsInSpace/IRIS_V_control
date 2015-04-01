@@ -23,13 +23,15 @@ __https__: `git clone https://github.com/IllinoisRoboticsInSpace/IRIS_V_control.
 
 4)  `source setup.bash`
 
-5)  `cd src`
+5)  `cd IRIS_V_control/src`
 
 6)  `catkin_init_workspace`
 
 7)  `cd ..`
 
-8)  `source devel/setup.bash`
+8) `catkin_make`
+
+9)  `source devel/setup.bash`
 
 It is a good idea to add `source <path to IRIS_V_control>/devel/setup.bash`
 to your .bashrc file.
@@ -39,11 +41,13 @@ to your .bashrc file.
 
 1) `roscd`
 
-2) `cd IRIS_V_control`
+2) `source setup.bash` (needed if you just pulled from the repo)
 
-3a) __rosbuild__: `rosmake <package name>`
+3) `cd IRIS_V_control`
 
-3b) __catkin__:   `catkin_make`
+4a) __rosbuild__: `rosmake <package name>`
+
+4b) __catkin__:   `catkin_make`
 
 ## Adding new packages
 
