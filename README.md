@@ -75,3 +75,8 @@ http://wiki.ros.org/ROS/Tutorials/CreatingPackage
 
 Messages containing data necessary for finite state machine to operate
 effectively. Includes descriptions of current and desired robot status.
+
+### manual\_robot\_control
+
+Allows the robot to be controlled via either the keyboard or the XBOX
+controller. Outputs a geometry_msgs/Twist message.
