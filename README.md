@@ -16,7 +16,7 @@ http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment
 2)  Clone the repository
 
 __ssh__: `git clone git@github.com:IllinoisRoboticsInSpace/IRIS_V_control.git`
-
+  
 __https__: `git clone https://github.com/IllinoisRoboticsInSpace/IRIS_V_control.git`
 
 3)  `rosws set IRIS_V_control`
@@ -37,13 +37,13 @@ to your .bashrc file.
 
 ## Compiling
 
-`roscd`
+1) `roscd`
 
-`cd IRIS_V_control`
+2) `cd IRIS_V_control`
 
-__rosbuild__: `rosmake <package name>`
+3a) __rosbuild__: `rosmake <package name>`
 
-__catkin__:   `catkin_make`
+3b) __catkin__:   `catkin_make`
 
 ## Adding new packages
 
