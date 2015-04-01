@@ -32,6 +32,4 @@ __https__: `git clone https://github.com/IllinoisRoboticsInSpace/IRIS_V_control.
 ### IRIS\_msgs
 
 Messages containing data necessary for finite state machine to operate
-effectively. Includes descriptions of current and desired robot states.
-
-Note: "state" here is not the same as a finite state machine "state"
+effectively. Includes descriptions of current and desired robot status.
