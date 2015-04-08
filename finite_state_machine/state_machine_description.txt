@@ -1,0 +1,134 @@
+States:
+  wait_to_start:
+    if manual command sent of fatal error received:
+      state = manual
+    if position not yet received:
+      publish nothing
+    if position received:
+      goal = current position
+      turbine_position = DOWN
+      turbine_state = OFF
+      bin_position = DOWN
+    if "start" pressed:
+      state = localize
+
+  localize:
+    if manual command sent of fatal error received:
+      state = manual
+    if cov > tol:
+      goal = current position
+      turbine_position = current turbine position
+      turbine_state = current turbine state
+      bin_position = current bin state (always would be DOWN)
+    if cov < tol:
+      if previous state was wait_to_start:
+        state = move_to_mine
+      if previous state was anything else:
+        state = previous state
+
+  move_to_mine:
+    if manual command sent of fatal error received:
+      state = manual
+    if cov > tol:
+      state = localize
+    if error < tol:
+      state = mine
+    if error > tol:
+      goal = mine location
+      turbine_position = DOWN
+      turbine_state = OFF
+      bin_position = DOWN
+    
+  mine:
+    if manual command sent of fatal error received:
+      state = manual
+    if turbine_position != DOWN
+      goal = current location
+      turbine_state = ON
+      turbine_position = DOWN
+      bin_position = DOWN
+    if load > 25 kg or <some time criterion>
+      state = move_to_dump
+    if cov > tol:
+      state = localize
+    if error < tol:
+      goal = next waypoint             
+      turbine_state = ON
+      turbine_position = DOWN
+      bin_position = DOWN
+    if error > tol:
+      goal = current waypoint
+      turbine_state = ON
+      tuurbine_position = DOWN
+      bin_position = DOWN
+
+  move_to_dump:
+    if manual command sent of fatal error received:
+      state = manual
+    if turbine_position != UP or turbine_state != OFF:
+      goal = current location
+      turbine_state = OFF
+      turbine_position = UP
+      bin_position = DOWN
+    if cov > tol:
+      state = localize
+    if error < tol:
+      if goal = dump waypoint:
+        state = dump
+      if goal = turn waypoint:
+        goal = dump waypoint
+        turbine_state = OFF
+        turbine_position = DOWN
+        bin_position = DOWN
+    if error > tol:
+      goal = current waypoint
+      turbine_state = OFF
+      turbine_position = UP
+      bin_position = DOWN
+
+  dump:
+    if manual command sent of fatal error received:
+      state = manual
+    if bin has not yet raised:
+      goal = current position
+      turbine_state = OFF
+      turbine_position = UP
+      bin_position = UP
+    if bin has already raised:
+      if time < wait time:
+        goal = current position
+        turbine_state = OFF
+        turbine_position = UP
+        bin_position = UP
+      if time > wait time and bin_position != DOWN
+        goal = current position
+        turbine_state = OFF
+        turbine_position = UP
+        bin_position = DOWN
+      if bin_position = DOWN
+        state = move_to_mine
+
+  manual:
+    kill all autonomy
+    reroute signals so Xbox controller controls robot
+    state machine becomes obsolete
+
+Initialization parameters:
+  Localization error tolerance (distance and angle)
+  Distance from goal tolerance (distance and angle)
+  Mining start location (position and orientation -> pose)
+  Mining waypoints (set of positions and orientations -> pose array)
+  Load to collect (assuming 25 kg)
+  Mining time limits?
+  Dumping turn waypoint (position and orientation -> pose)
+  Bin location (position and orientation -> pose)
+  Dumping wait time
+
+Topics subscribed:
+  Joy (from manual control laptop)
+  RobotStatusStamped (from serial communication node)
+    frame = global map
+
+Topics published:
+  RobotCommandStamped
+    frame = global map
