@@ -1,0 +1,19 @@
+<package>
+  <description brief="IRIS_relays">
+
+     IRIS_relays
+
+  </description>
+  <author>Gil</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/IRIS_relays</url>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="IRIS_msgs"/>
+
+</package>
+
+
