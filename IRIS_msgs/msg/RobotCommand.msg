@@ -4,10 +4,10 @@
 geometry_msgs/Pose goal
 
 # Desired paddle position. (TRUE = DOWN)
-std_msgs/Bool paddle_position
+bool paddle_position
 
 # Whether the paddle should be on off. (TRUE = ON)
-std_msgs/Bool paddle_status
+bool paddle_status
 
 # Whether the bin should be up or down. (TRUE = UP)
-std_msgs/Bool bin_position
+bool bin_position
