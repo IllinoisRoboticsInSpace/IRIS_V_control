@@ -3,11 +3,11 @@
 # The target location
 geometry_msgs/Pose goal
 
-# Desired turbine position. (TRUE = DOWN)
-std_msgs/Bool turbine_position
+# Desired paddle position. (TRUE = DOWN)
+std_msgs/Bool paddle_position
 
-# Whether the turbine should be on off. (TRUE = ON)
-std_msgs/Bool turbine_state
+# Whether the paddle should be on off. (TRUE = ON)
+std_msgs/Bool paddle_status
 
 # Whether the bin should be up or down. (TRUE = UP)
 std_msgs/Bool bin_position
