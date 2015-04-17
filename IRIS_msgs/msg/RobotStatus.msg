@@ -11,7 +11,7 @@ geometry_msgs/TwistWithCovariance twist
 uint32 paddle_position
 
 # Whether or not the paddle is on. (TRUE = ON)
-bool paddle_state
+bool paddle_status
 
 # Status of the bin actuator.
 # (0 = RETRACTING, 1 = DOWN, 2 = EXTENDING, 3 = UP)

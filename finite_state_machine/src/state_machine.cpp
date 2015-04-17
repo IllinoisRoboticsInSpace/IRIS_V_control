@@ -24,34 +24,34 @@
 const double pi = 4 * atan(1.);
 
 // list of states for machine
-enum state_t = {wait_to_start, localize, move_to_min, mine, move_to_dump,
+enum state {wait_to_start, localize, move_to_mine, mine, move_to_dump,
                 dump, manual};
-enum actuator_state = {rectracting, down, extending, up};
+enum actuator_status {rectracting, down, extending, up};
 enum actuator_command : bool {DOWN = false, UP = true};
-enum paddle_state : bool {OFF = false, ON = true};
+enum paddle_status : bool {OFF = false, ON = true};
 
 /** 
  * class to maintain shared and persistent data whie subscribing to
  * multiple topics and publishing the RobotCommand
  **/
-class SubscribeAndPublish()
+class StateMachine
 {
 
 public:
   /**
-   * SubscribeAndPublish constructor
+   * StateMachine constructor
    * Topics are hardcoded for now, but this should be fixed with parameters.
    * Subscribes to Joy command for mission control & RobotStatus for autonomy.
    **/
-  SubscribeAndPublish()
+  StateMachine()
   {
     // topic to publish (command for the robot)
     pub_ = n_.advertise<IRIS_msgs::RobotCommandStamped>("/IRIS/command", 1);
 
     // topics to subscribe
-    sub_joy = n_.subscribe("/joy", 1, &SubscribeAndPublish::callback_joy, this);
+    sub_joy = n_.subscribe("/joy", 1, &StateMachine::callback_joy, this);
     sub_status = n_.subscribe("/IRIS/status", 1,
-                              &SubscribeAndPublish::callback_status, this);
+                              &StateMachine::callback_status, this);
     
     // setup the states for start
     goal_state = move_to_mine;
@@ -59,7 +59,7 @@ public:
 
     // initialize the RobotCommand
     command.command.paddle_position = UP;
-    command.command.paddle_state = OFF;
+    command.command.paddle_status = OFF;
     command.command.bin_position = DOWN;
     command.command.active_goal = false;
     command.header.frame_id = frame_id;
@@ -68,9 +68,11 @@ public:
     // setup persistent data from parameters (once that's figured out)
     // hardwired for now
     frame_id = "1";
+    mine_waypoints = std::vector<geometry_msgs::Pose>();
+    dump_waypoints = std::vector<geometry_msgs::Pose>();
     
     // loop until ros::Time::Now() != 0
-    // necessary because of how nodes are intialized, or something like that
+    // necessary to get a valid timestamp on published messages
     while (ros::Time::now().sec == 0) {}
   };
 
@@ -81,6 +83,21 @@ public:
     {
       // wait_to_start: do nothing
       case wait_to_start:
+        break;
+
+      case localize:
+        break;
+
+      case move_to_mine:
+        break;
+
+      case mine:
+        break;
+
+      case move_to_dump:
+        break;
+
+      case dump:
         break;
 
       // manual: do nothing
@@ -96,12 +113,37 @@ public:
 
   void callback_joy(const sensor_msgs::Joy::ConstPtr & joy)
   {
-    if (joy->buttons[0])
+    if (joy->buttons[6])
     {
       current_state = manual;
       command.command.active_goal = false;
       command.command.goal = geometry_msgs::Pose();
     }
+    if (joy->buttons[0])
+    {
+      command.command.bin_position = DOWN;
+    }
+    if (joy->buttons[1])
+    {
+      command.command.bin_position = UP;
+    }
+    if (joy->buttons[2])
+    {
+      command.command.paddle_position = DOWN;
+    }
+    if (joy->buttons[3])
+    {
+      command.command.paddle_position = UP;
+    }
+    if (joy->buttons[4])
+    {
+      command.command.paddle_status = OFF;
+    }
+    if (joy->buttons[5])
+    {
+      command.command.paddle_status = ON;
+    }
+
   }
 
 private:
@@ -112,8 +154,8 @@ private:
   ros::Subscriber sub_status;
 
   // state machine control
-  state_t goal_state;
-  state_t current_state;
+  state goal_state;
+  state current_state;
 
   // the published command
   IRIS_msgs::RobotCommandStamped command;
@@ -126,15 +168,15 @@ private:
   std::vector<geometry_msgs::Pose> dump_waypoints;
   unsigned int waypoint_counter;
 
-} // end of class SubscribeAndPublish
+}; // end of class StateMachine
 
 int main(int argc, char **argv)
 {
   //Initiate ROS
   ros::init(argc, argv, "finite_state_machine");
 
-  //Create an object of class SubscribeAndPublish that will take care of everything
-  SubscribeAndPublish SAPObject;
+  //Create an object of class StateMachine that will take care of everything
+  StateMachine SAPObject;
 
   ros::spin();
 
