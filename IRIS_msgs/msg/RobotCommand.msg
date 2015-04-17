@@ -12,6 +12,5 @@ bool paddle_status
 # Whether the bin should be up or down. (TRUE = UP)
 bool bin_position
 
-# Whether goals should be sent to move_base
-bool active_goal
-
+# The velocity command to be sent to the robot
+geometry_msgs/Twist cmd_vel

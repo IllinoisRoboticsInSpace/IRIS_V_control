@@ -1,0 +1,18 @@
+<package>
+  <description brief="manual_robot_control">
+
+     manual_robot_control
+
+  </description>
+  <author>Gil</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/manual_robot_control</url>
+  <depend package="roscpp"/>
+  <depend package="rospy"/>
+  <depend package="sensor_msgs"/>
+  <depend package="joy"/>
+
+</package>
+
+

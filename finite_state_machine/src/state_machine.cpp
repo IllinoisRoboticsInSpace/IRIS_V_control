@@ -61,7 +61,6 @@ public:
     command.command.paddle_position = UP;
     command.command.paddle_status = OFF;
     command.command.bin_position = DOWN;
-    command.command.active_goal = false;
     command.header.frame_id = frame_id;
     command.header.seq = 0;
 
@@ -83,9 +82,11 @@ public:
     {
       // wait_to_start: do nothing
       case wait_to_start:
+        command.command.cmd_vel = geometry_msgs::Twist();
         break;
 
       case localize:
+        command.command.cmd_vel = geometry_msgs::Twist();
         break;
 
       case move_to_mine:
@@ -109,41 +110,57 @@ public:
     command.header.stamp = ros::Time::now();
     command.header.seq++;
     pub_.publish(command);
-  };
+  }
 
   void callback_joy(const sensor_msgs::Joy::ConstPtr & joy)
   {
+    ROS_INFO("Received Joy\n");
+    ROS_INFO("State = [%d]\n",current_state);
+    
     if (joy->buttons[6])
     {
       current_state = manual;
-      command.command.active_goal = false;
       command.command.goal = geometry_msgs::Pose();
     }
-    if (joy->buttons[0])
-    {
-      command.command.bin_position = DOWN;
-    }
-    if (joy->buttons[1])
-    {
-      command.command.bin_position = UP;
-    }
-    if (joy->buttons[2])
-    {
-      command.command.paddle_position = DOWN;
-    }
-    if (joy->buttons[3])
-    {
-      command.command.paddle_position = UP;
-    }
-    if (joy->buttons[4])
-    {
-      command.command.paddle_status = OFF;
-    }
-    if (joy->buttons[5])
-    {
-      command.command.paddle_status = ON;
-    }
 
+    // only listen for commands other than switch to manual if in manual state
+    if (current_state == manual)
+    {
+      if (joy->buttons[0])
+      {
+        command.command.bin_position = DOWN;
+      }
+      if (joy->buttons[1])
+      {
+        command.command.bin_position = UP;
+      }
+      if (joy->buttons[2])
+      {
+        command.command.paddle_position = DOWN;
+      }
+      if (joy->buttons[3])
+      {
+        command.command.paddle_position = UP;
+      }
+      if (joy->buttons[4])
+      {
+        command.command.paddle_status = OFF;
+      }
+      if (joy->buttons[5])
+      {
+        command.command.paddle_status = ON;
+      }
+
+      double x = joy->axes[1];
+      double z = joy->axes[0];
+      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? x : 0;
+      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? z : 0;
+    }
+  }
+
+  void callback_cmdvel(const geometry_msgs::Twist & cmd_vel)
+  {
+    command.command.cmd_vel = cmd_vel;
   }
 
 private:
@@ -152,6 +169,7 @@ private:
   ros::Publisher pub_;
   ros::Subscriber sub_joy;
   ros::Subscriber sub_status;
+  ros::Subscriber sub_cmdvel;
 
   // state machine control
   state goal_state;
