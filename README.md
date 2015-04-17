@@ -60,12 +60,5 @@ Stuff needed to make utilize the Xbox controller for manual control.
 
 ### finite\_state\_machine
 
-Provides robot state control.
-
-__Subcribed__: <br />
-_/joy_ - Xbox controller command <br />
-_/IRIS/status_ - Robot status from serial comm node <br />
-_/cmd\_vel_ - Robot command velocity from move\_base
-
-__Plublished__: <br />
-_/IRIS/command_ - Robot command to serial comm node
+Provides robot state control based on the robot's status and what actions
+need to be taken to effectively complete the mission.
