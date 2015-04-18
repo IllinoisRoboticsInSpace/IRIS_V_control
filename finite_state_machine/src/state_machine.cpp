@@ -49,7 +49,7 @@ public:
     pub_ = n_.advertise<IRIS_msgs::RobotCommandStamped>("/IRIS/command", 1);
 
     // topics to subscribe
-    sub_joy = n_.subscribe("/joy", 1, &StateMachine::callback_joy, this);
+    sub_joy = n_.subscribe("/joy_filtered", 1, &StateMachine::callback_joy, this);
     sub_status = n_.subscribe("/IRIS/status", 1,
                               &StateMachine::callback_status, this);
     
@@ -153,8 +153,8 @@ public:
 
       double x = joy->axes[1];
       double z = joy->axes[0];
-      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? x : 0;
-      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? z : 0;
+      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? x / 2 : 0;
+      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? z / 2 : 0;
     }
   }
 
