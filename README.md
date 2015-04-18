@@ -31,12 +31,10 @@ __https__: `git clone https://github.com/IllinoisRoboticsInSpace/IRIS_V_control.
 
 3) `cd IRIS_V_control`
 
-4a) __rosbuild__: `rosmake <package name>`
+4) __rosbuild__: `rosmake <package name>`
 
 
 ## Adding new packages
-
-### rosbuild
 
 1) `roscd`
 
@@ -62,15 +60,5 @@ Stuff needed to utilize the Xbox controller for manual control.
 
 ### finite\_state\_machine
 
-Provides robot state control.
-
-__Subcribed__:
-
-/joy - Xbox controller command
-/IRIS/status - Robot status from serial comm node
-/cmd\_vel - Robot command velocity from move\_base
-
-
-__Plublished__:
-
-/IRIS/command - Robot command to serial comm node
+Provides robot state control based on the robot's status and what actions
+need to be taken to effectively complete the mission.
