@@ -5,6 +5,7 @@
 
 // ROS includes
 #include <ros/ros.h>
+#include <ros/time.h>
 #include <tf/transform_broadcaster.h>
 
 // ROS msg includes
@@ -18,7 +19,10 @@
 #include <IRIS_msgs/RobotStatus.h>
 #include <IRIS_msgs/RobotStatusStamped.h>
 #include <sensor_msgs/Joy.h>
+#include <std_msgs/Bool.h>
 #include <std_msgs/Header.h>
+
+#define msec2nsec 1000000
 
 // define pi for math use
 const double pi = 4 * atan(1.);
@@ -52,6 +56,10 @@ public:
     sub_joy = n_.subscribe("/joy_filtered", 1, &StateMachine::callback_joy, this);
     sub_status = n_.subscribe("/IRIS/status", 1,
                               &StateMachine::callback_status, this);
+    sub_heartbeat = n_.subscribe("/IRIS/heartbeat", 1, 
+                                 &StateMachine::callback_heartbeat, this);
+    sub_trigger = n_.subscribe("/IRIS/trigger", 1, 
+                                 &StateMachine::callback_trigger, this);
     
     // setup the states for start
     goal_state = move_to_mine;
@@ -69,11 +77,13 @@ public:
     frame_id = "1";
     mine_waypoints = std::vector<geometry_msgs::Pose>();
     dump_waypoints = std::vector<geometry_msgs::Pose>();
+    max_timeout = 1000;
     
     // loop until ros::Time::Now() != 0
     // necessary to get a valid timestamp on published messages
     while (ros::Time::now().sec == 0) {}
-  };
+    last_heartbeat = ros::Time::now();
+  }
 
   void callback_status(const IRIS_msgs::RobotStatusStamped & robot_status) 
   {
@@ -114,6 +124,7 @@ public:
 
   void callback_joy(const sensor_msgs::Joy::ConstPtr & joy)
   {
+    last_heartbeat = ros::Time::now();
     ROS_INFO("Received Joy\n");
     ROS_INFO("State = [%d]\n",current_state);
     
@@ -155,6 +166,11 @@ public:
       double z = joy->axes[0];
       command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? x / 2 : 0;
       command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? z / 2 : 0;
+
+      // publish the command
+      command.header.stamp = ros::Time::now();
+      command.header.seq++;
+      pub_.publish(command);
     }
   }
 
@@ -163,6 +179,28 @@ public:
     command.command.cmd_vel = cmd_vel;
   }
 
+  void callback_trigger(const std_msgs::Bool & trigger)
+  {
+    if ((ros::Time::now() - last_heartbeat).toNSec() > max_timeout * msec2nsec)
+    {
+      ROS_INFO("No heartbeat. Stopping.");
+      command.command.cmd_vel = geometry_msgs::Twist();
+      command.command.paddle_status = 0;
+
+      // publish the command
+      command.header.stamp = ros::Time::now();
+      command.header.seq++;
+      pub_.publish(command);
+    }
+  }
+
+  void callback_heartbeat(const std_msgs::Bool & beat)
+  {
+    ROS_INFO("Got heartbeat");
+    last_heartbeat = ros::Time::now();
+  }
+
+
 private:
   // ROS node stuff
   ros::NodeHandle n_;
@@ -170,10 +208,14 @@ private:
   ros::Subscriber sub_joy;
   ros::Subscriber sub_status;
   ros::Subscriber sub_cmdvel;
+  ros::Subscriber sub_heartbeat;
+  ros::Subscriber sub_trigger;
 
   // state machine control
   state goal_state;
   state current_state;
+  ros::Time last_heartbeat;
+  unsigned int max_timeout;
 
   // the published command
   IRIS_msgs::RobotCommandStamped command;
@@ -190,11 +232,11 @@ private:
 
 int main(int argc, char **argv)
 {
-  //Initiate ROS
+  // Initiate ROS
   ros::init(argc, argv, "finite_state_machine");
 
-  //Create an object of class StateMachine that will take care of everything
-  StateMachine SAPObject;
+  // Create an object of class StateMachine that will take care of everything
+  StateMachine machine;
 
   ros::spin();
 

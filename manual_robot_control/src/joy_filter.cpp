@@ -13,7 +13,8 @@ inline double pow2(double a) {return a * a;}
 double x_deadzone = 0.06;
 double z_deadzone = 0.12;
 double change_tol = 0.05;
-double max_stick_rate = 10;
+unsigned int max_stick_rate = 10;
+unsigned int min_rate = 2;
 
 // header stuff
 unsigned int seq = 0;
@@ -41,8 +42,11 @@ void callback_joy(const sensor_msgs::Joy::ConstPtr & tmpjoy)
     }
   }
   
-  // check if axes changed more than tolerance if enough time has passed
+  // check if axes changed more than tolerance and elapsed time
   unsigned int dt = (joy.header.stamp - prev.header.stamp).toNSec() / 1000000;
+  if (dt > 1000 / min_rate)
+    changed = true;
+
   if (dt > 1000 / max_stick_rate)
   {
     for (int i = 0; i < 2; i++)
