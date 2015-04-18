@@ -58,7 +58,7 @@ effectively. Includes descriptions of current and desired robot status.
 
 ### manual\_robot\_control
 
-Stuff needed to make utilize the Xbox controller for manual control.
+Stuff needed to utilize the Xbox controller for manual control.
 
 ### finite\_state\_machine
 
