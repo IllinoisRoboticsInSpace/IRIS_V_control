@@ -23,31 +23,16 @@ __https__: `git clone https://github.com/IllinoisRoboticsInSpace/IRIS_V_control.
 
 4)  `source setup.bash`
 
-5)  `cd IRIS_V_control/src`
-
-6)  `catkin_init_workspace`
-
-7)  `cd ..`
-
-8) `catkin_make`
-
-9)  `source devel/setup.bash`
-
-It is a good idea to add `source <path to IRIS_V_control>/devel/setup.bash`
-to your .bashrc file.
-
-
 ## Compiling
 
 1) `roscd`
 
-2) `source setup.bash` (needed if you just pulled from the repo)
+2) `source setup.bash` (needed if you just pulled from the repo or added packages)
 
 3) `cd IRIS_V_control`
 
 4a) __rosbuild__: `rosmake <package name>`
 
-4b) __catkin__:   `catkin_make`
 
 ## Adding new packages
 
@@ -64,18 +49,28 @@ http://wiki.ros.org/ROS/Tutorials/CreatingPackage
 
 (See `IRIS_msgs/.gitignore`)
 
-### catkin
-
-1) `roscd`
-
-2) `cd IRIS_V_control/src`
-
-3) Follow the catkin package creation tutorial at <br />
-http://wiki.ros.org/ROS/Tutorials/CreatingPackage
-
 ## Package list
 
 ### IRIS\_msgs
 
 Messages containing data necessary for finite state machine to operate
 effectively. Includes descriptions of current and desired robot status.
+
+### manual\_robot\_control
+
+Stuff needed to utilize the Xbox controller for manual control.
+
+### finite\_state\_machine
+
+Provides robot state control.
+
+__Subcribed__:
+
+/joy - Xbox controller command
+/IRIS/status - Robot status from serial comm node
+/cmd\_vel - Robot command velocity from move\_base
+
+
+__Plublished__:
+
+/IRIS/command - Robot command to serial comm node

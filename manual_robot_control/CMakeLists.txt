@@ -32,3 +32,4 @@ rosbuild_add_executable(keyboard_control src/keyboard_control.cpp)
 target_link_libraries (keyboard_control curses)
 
 rosbuild_add_executable(xbox_control src/xbox_control.cpp)
+rosbuild_add_executable(joy_filter src/joy_filter.cpp)
