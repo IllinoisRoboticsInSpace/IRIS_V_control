@@ -196,8 +196,8 @@ public:
 
   void callback_heartbeat(const std_msgs::Bool & beat)
   {
-    ROS_INFO("Got heartbeat");
     last_heartbeat = ros::Time::now();
+    pub_.publish(command);
   }
 
 
