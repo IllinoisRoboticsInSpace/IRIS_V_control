@@ -59,6 +59,10 @@ void callback_joy(const sensor_msgs::Joy::ConstPtr & tmpjoy)
     }
   }
 
+  if ((joy.axes[0] == 0 && joy.axes[1] == 0) && 
+      (prev.axes[0] != 0 || prev.axes[1] != 0))
+    changed = true;
+
   if (changed)
   {
     for (int i = 0; i < 8; i++) prev.buttons[i] = joy.buttons[i];
