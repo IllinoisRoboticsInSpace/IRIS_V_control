@@ -1,8 +1,3 @@
-'''
-This is is mainly to test serial communication functionality with the
-goal of sending motor commands. Dynamics are used to convert the
-cmd_vel to two 8-bit motor speeds 0-255, where 128 is not moving.
-'''
 #!/usr/bin/env python
 import roslib
 import io
@@ -14,6 +9,11 @@ import time
 from IRIS_msgs.msg import RobotCommandStamped
 from IRIS_msgs.msg import RobotStatusStamped
 
+'''
+This is is mainly to test serial communication functionality with the
+goal of sending motor commands. Dynamics are used to convert the
+cmd_vel to two 8-bit motor speeds 0-255, where 128 is not moving.
+'''
 
 ser = serial.Serial("/dev/ttyACM0", 9600, bytesize=serial.EIGHTBITS,
                      parity = serial.PARITY_NONE,
