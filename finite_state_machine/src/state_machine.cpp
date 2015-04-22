@@ -164,8 +164,9 @@ public:
 
       double x = joy->axes[1];
       double z = joy->axes[0];
-      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? x / 2 : 0;
-      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? z / 2 : 0;
+      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? 0 : x/2;
+      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? 0: z/2;
+      ROS_INFO("[%f][%f]",x,z);
 
       // publish the command
       command.header.stamp = ros::Time::now();
@@ -196,6 +197,7 @@ public:
 
   void callback_heartbeat(const std_msgs::Bool & beat)
   {
+    ROS_INFO("Got Heartbeat");
     last_heartbeat = ros::Time::now();
     pub_.publish(command);
   }
