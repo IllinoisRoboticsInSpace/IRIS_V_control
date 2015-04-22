@@ -8,6 +8,7 @@ import math
 import time
 from IRIS_msgs.msg import RobotCommandStamped
 from IRIS_msgs.msg import RobotStatusStamped
+from std_msgs.msg import Bool
 
 '''
 This is is mainly to test serial communication functionality with the
@@ -23,7 +24,7 @@ ser = serial.Serial("/dev/ttyACM0", 115200, bytesize=serial.EIGHTBITS,
                      rtscts=0)
 print (ser.readline())
 
-def callback(command):
+def callback_command(command):
     
     # convert the velocity commands to right and left tread speeds using
     # the robot physics
@@ -56,20 +57,19 @@ def callback(command):
     ser.write(thingtosend)
     ser.flushOutput()
 
-    print("Bytes in buffer:", ser.inWaiting())
+
+def callback_trigger(trigger):
+    print("Got triggered")
+    print("Bytes in buffer: ", ser.inWaiting())
     ack = ser.read(ser.inWaiting())
     print(ack)
     ser.flushInput()
-    print("Ack:  [%d] [%d] [%c] [%c] [%c]" % (ord(ack[0]),
-                                        ord(ack[1]),
-                                        ack[2],
-                                        ack[3],
-                                        ack[4]))
 
 
 def main():
     rospy.init_node('serial_comm_python')
-    rospy.Subscriber('/IRIS/command', RobotCommandStamped, callback)
+    rospy.Subscriber('/IRIS/command', RobotCommandStamped, callback_command)
+    rospy.Subscriber('/IRIS/serial_trigger', Bool, callback_trigger)
     rospy.spin()
     ser.close()
 
