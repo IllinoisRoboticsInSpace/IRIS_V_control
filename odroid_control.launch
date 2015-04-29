@@ -1,8 +1,8 @@
 <launch>
 
   <!-- state machine -->
-  <node respawn="true" pkg="finite_state_machine"
-        type="state_machine" name="IRIS_FSM" >
+  <node respawn="true" pkg="finite_state_machine" type="state_machine" 
+        name="IRIS_FSM" output="screen">
   </node>
 
   <!-- trigger for FSM -->
