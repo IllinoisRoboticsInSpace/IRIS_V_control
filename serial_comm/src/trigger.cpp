@@ -6,7 +6,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "serial_comm_trigger");
   ros::NodeHandle n;
-  unsigned int frequency = 10;
+  unsigned int frequency = 5;
   ros::Rate loop_rate(frequency);
   ros::Publisher pub = n.advertise<std_msgs::Bool>("/IRIS/serial_trigger", 1);
 

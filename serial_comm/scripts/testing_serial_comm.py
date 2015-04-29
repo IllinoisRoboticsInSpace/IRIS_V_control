@@ -48,18 +48,18 @@ def callback_command(command):
 
     thingtosend = "%c%c%c%c%c" % (int(left),int(right),paddle_position,
                                   bin_position,paddle_status)
-    print('Sent: [%d] [%d] [%c] [%c] [%c]' % (ord(thingtosend[0]),
-                                        ord(thingtosend[1]),
-                                        thingtosend[2],
-                                        thingtosend[3],
-                                        thingtosend[4]))
-    if ser.isOpen(): print('serial is open')
+#   print('Sent: [%d] [%d] [%c] [%c] [%c]' % (ord(thingtosend[0]),
+#                                       ord(thingtosend[1]),
+#                                       thingtosend[2],
+#                                       thingtosend[3],
+#                                       thingtosend[4]))
+#   if ser.isOpen(): print('serial is open')
     ser.write(thingtosend)
     ser.flushOutput()
 
 
 def callback_trigger(trigger):
-    print("Got triggered")
+#   print("Got triggered")
     print("Bytes in buffer: ", ser.inWaiting())
     ack = ser.read(ser.inWaiting())
     print(ack)
