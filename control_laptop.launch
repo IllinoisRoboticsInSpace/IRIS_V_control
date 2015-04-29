@@ -2,7 +2,7 @@
 
   <!-- joy node -->
   <node respawn="true"  pkg="joy"
-        type="joy_node" name="SEMBA_joy" >
+        type="joy_node" name="IRIS_joy" >
     <param name="dev" value="/dev/input/js0" type="string" />
   </node>
 
@@ -16,9 +16,10 @@
   </node>
 
   <!-- heartbeat for FSM -->
-  <node respawn="true" pkg="finite_state_machine" type="heartbeat"
-        name="FSM_heartbeat" output="screen">
+  <node respawn="true" pkg="finite_state_machine" type="trigger"
+        name="FSM_heartbeat" >
     <param name="frequency" value="2" />
+    <param name="topic"     value="/IRIS/heartbeat" />
   </node>
 
 </launch>
