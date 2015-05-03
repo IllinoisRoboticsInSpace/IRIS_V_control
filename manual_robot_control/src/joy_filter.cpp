@@ -8,13 +8,10 @@ ros::Publisher pub;
 // square function
 inline double pow2(double a) {return a * a;}
 
-// controller deadzones
-// TODO: makes these use parameters
-double x_deadzone = 0.06;
-double z_deadzone = 0.12;
-double change_tol = 0.05;
-unsigned int max_stick_rate = 10;
-unsigned int min_rate = 2;
+double x_deadzone;
+double z_deadzone;
+double jitter_tol;
+double max_stick_rate;
 
 // header stuff
 unsigned int seq = 0;
@@ -26,12 +23,12 @@ void callback_joy(const sensor_msgs::Joy::ConstPtr & tmpjoy)
 {
   sensor_msgs::Joy joy = *tmpjoy;
 
+  bool changed = false;
+
   // check deadzone
   if (joy.axes[0] > -z_deadzone && joy.axes[0] < z_deadzone) joy.axes[0] = 0;
   if (joy.axes[1] > -x_deadzone && joy.axes[1] < x_deadzone) joy.axes[1] = 0;
    
-  bool changed = false;
-
   // check if buttons changed
   for (int i = 0; i < 8; i++)
   {
@@ -40,6 +37,12 @@ void callback_joy(const sensor_msgs::Joy::ConstPtr & tmpjoy)
       changed = true;
       break;
     }
+  }
+
+  if ((joy.axes[0] == 0 && joy.axes[1] == 0) &&
+      (prev.axes[0] != 0 || prev.axes[0] != 0))
+  {
+    changed = true;
   }
   
   // check if axes changed more than tolerance and elapsed time
@@ -51,7 +54,7 @@ void callback_joy(const sensor_msgs::Joy::ConstPtr & tmpjoy)
   {
     for (int i = 0; i < 2; i++)
     {
-      if (pow2(joy.axes[i] - prev.axes[i]) > pow2(change_tol))
+      if (pow2(joy.axes[i] - prev.axes[i]) > pow2(jitter_tol))
       {
         changed = true;
         break;
@@ -81,6 +84,14 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "joy_filter");
   ros::NodeHandle n;
+  ros::NodeHandle n_("~");
+
+  // set the parameters
+  n_.param<double>("threshold/x", x_deadzone, 0.10);
+  n_.param<double>("threshold/z", z_deadzone, 0.12);
+  n_.param<double>("threshold/jitter", jitter_tol, 0.05);
+  n_.param<double>("max_rate", max_stick_rate, 10);
+
   pub = n.advertise<sensor_msgs::Joy>("/joy_filtered", 1);
   
   sub_joy = n.subscribe<sensor_msgs::Joy>("/joy", 1, callback_joy);
