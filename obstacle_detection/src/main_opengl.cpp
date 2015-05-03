@@ -9,17 +9,20 @@
 #include <string.h>//strcpy
 #include <vector> //for std::vector
 using namespace std;
+
 /**ROS**/
 #include "ros/ros.h"
 #include "sensor_msgs/PointCloud2.h"
 #include <sstream>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
+
 /**IRIS CODE**/
 #include "CoordSystemKinect.hpp"//Kinect Input
 #include "libfreenect.hpp"//Kinect Input
 #include "Linear.hpp"//Mat3
 #include "Map.hpp"//Map<T>
+
 /**OPENGL**/
 #include <GL/glut.h>
 #include <GL/gl.h>
@@ -37,6 +40,7 @@ const int dispHeight = 480;
 const int dispWidth = 480;
 
 /**KINECT**/
+const int numMaps = 4;//how many maps do we use per publish(to remove bad data)
 const bool onOdroid = false;
 const int maxViewDist = 2500;//millimeters
 const int minViewDist = 470;//millimeters
@@ -131,16 +135,28 @@ void* thread_depth(void* arg)
     ros::NodeHandle nodeHandle;
     ros::Publisher publisher = nodeHandle.advertise<sensor_msgs::PointCloud2>(topicName, bufferSize);
 
+    int gradientIterator = 0;
+    std::vector<Map<float> > gradList;
+    for(int i=0; i<numMaps; ++i)
+        gradList.push_back(Map<float>(Vec2i(gradientHalfSizeX, gradientHalfSizeY)));
+
+    Map<float> tempGrad(Vec2i(gradientHalfSizeX, gradientHalfSizeY));
 
     while(not threads_stop)
     {
+        if(gradientIterator == numMaps)
+            gradientIterator = 0;
+
+        gradList[gradientIterator].clear();
+        tempGrad.clear();
+
         if(not depth_used && pDepth != NULL)//make sure we don't take an image with bad accelerometer data
         {
             if(downDirection.z == 0)
                 ROS_INFO("\nNo Data From Kinect Accelerometer!");
 
             const int pointCount = csk::dimX*csk::dimY;
-            Map<float> gradient(Vec2i(gradientHalfSizeX, gradientHalfSizeY));
+
             Map<float> height(Vec2i(gradientHalfSizeX, gradientHalfSizeY));
 
             height.getPoint(Vec2i(0,0)).value = 9;
@@ -186,13 +202,10 @@ void* thread_depth(void* arg)
             /**REMOVE STRANGE VALUES FROM MAP**/
             const float cellStepTolerance = 0.5;//fraction of a cells size that a cell
             //can change in height and will be marked as steep afterward
-            height.makeGradient(gradient, cellStepTolerance);//tolerance
-            gradient.minValue = -1;
-            gradient.maxValue = 9;
-            gradient.nullRep = '-';
+            height.makeGradient(gradList[gradientIterator], cellStepTolerance);//tolerance
+            height.makeGradient(tempGrad, cellStepTolerance);///SHOULD USE COPY FIX ME HELP DEBUG=================
+
             /**PUBLISH GRADIENT TO ROS TOPIC**/
-
-
             if(ros::ok())
             {
                 /**SETUP DATA STRUCTURES*/
@@ -200,8 +213,12 @@ void* thread_depth(void* arg)
                 sensor_msgs::PointCloud2 rosPointCloud;
                 pcl::PointCloud<pcl::PointXYZ> pclPointCloud;
 
+                /**AND TOGETHER GRADIENTS**/
+                for(int i=0; i<numMaps; ++i)
+                    tempGrad.andTogether(gradList[i]);
+
                 /**GET OBSTACLES**/
-                gradient.getData(obstacleList);
+                tempGrad.getData(obstacleList);
                 const int numObstacles = obstacleList.size();
 
                 /**RESIZE CLOUDS**/
@@ -225,7 +242,7 @@ void* thread_depth(void* arg)
                 /**PUT PCL CLOUD INTO ROS CLOUD**/
                 toROSMsg(pclPointCloud, rosPointCloud);
 
-                // set header
+                /**SET HEADERS FOR ROS**///so we can view in rvis and such
                 rosPointCloud.header.seq = ++seq;
                 rosPointCloud.header.frame_id = frame_id;
                 rosPointCloud.header.stamp = ros::Time::now();
@@ -234,6 +251,7 @@ void* thread_depth(void* arg)
                 publisher.publish(rosPointCloud);
                 ROS_INFO("I published %d obstacles!", numObstacles);
                 ros::spinOnce();
+
             }
             else
             {
@@ -252,13 +270,14 @@ void* thread_depth(void* arg)
             const int xOff = 80;
             const int yOff = 80;
 
+
             if(map_displayed)
             {
                 for(int i=0; i<sizeVideo; i+=3)
                 {
                     int x = i/3;
-                    float val = gradient.getPoint(Vec2i( (((x%csk::dimX))/xScale-xOff), -((x/csk::dimX)/yScale -yOff))).value;
-                    if(val == -9999.0)
+                    float val = tempGrad.getPoint(Vec2i( (((x%csk::dimX))/xScale-xOff), -((x/csk::dimX)/yScale -yOff))).value;
+                    if(val == -9999.0f)//defaultValue, no knowledge (set in Map.hpp)
                     {
                         pMapFeed[i+0] = 0;//red
                         pMapFeed[i+1] = 0;//green
@@ -270,16 +289,23 @@ void* thread_depth(void* arg)
                         pMapFeed[i+1] = 0;
                         pMapFeed[i+2] = 0;
                     }
-                    else
+                    else if(val == 0)//it is clear
                     {
                         pMapFeed[i+0] = 255;
                         pMapFeed[i+1] = 255;
+                        pMapFeed[i+2] = 255;
+                    }
+                    else//something went wrong
+                    {
+                        pMapFeed[i+0] = 0;
+                        pMapFeed[i+1] = 0;
                         pMapFeed[i+2] = 255;
                     }
                 }
                 map_displayed = false;
             }
             depth_used = true;
+            ++gradientIterator;
         }
         else
             usleep(1);//if we can't do stuff, just give control back to the processor!

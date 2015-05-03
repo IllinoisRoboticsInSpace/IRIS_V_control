@@ -147,10 +147,45 @@ public:
             }
         }
     }
+    /**======================**/
+    /**BITWISE AND WITH OTHER MAP**/
+    /** **/
+    /**======================**/
+    void andTogether(Map& rMap)
+    {
+        for(int y = -m_halfSize.x; y <= m_halfSize.y; ++y)
+        {
+            for(int x = -m_halfSize.x; x <= m_halfSize.x; ++x)
+            {
+                T thisVal = this->getPoint(Vec2i(x,y)).value;
+                T otherVal = rMap.getPoint(Vec2i(x,y)).value;
+
+                if((thisVal != defaultValue) && (otherVal != defaultValue))//get the point, and all points around it!
+                {
+                    this->getPoint(Vec2i(x,y)).value = (thisVal && otherVal);
+                }
+            }
+        }
+    }
+    /**======================**/
+    /**RESET ALL TO DEFAULT VALUES**/
+    /** **/
+    /**======================**/
+    void clear()
+    {
+        for(int y = -m_halfSize.x; y <= m_halfSize.y; ++y)
+        {
+            for(int x = -m_halfSize.x; x <= m_halfSize.x; ++x)
+            {
+                getPoint(Vec2i(x,y)).value = defaultValue;
+            }
+        }
+    }
+
     char nullRep;//used by print to file to represent no data
     T minValue;
     T maxValue;
-    const T defaultValue;
+    T defaultValue;
 private:
     /**======================**/
     /**TELLS US THE STEEPNESS FACTOR OF A PIECE OF TERRAIN BY COMPARING THE HEIGHT OF ADJACENT PIECES**/
