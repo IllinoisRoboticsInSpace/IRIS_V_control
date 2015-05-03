@@ -98,10 +98,7 @@ void depth_cb(freenect_device* pDevice, void* v_depth, uint32_t timestamp)
 {
     if(depth_used)
     {
-        if(onOdroid)
-            rev_memcpy<uint16_t>(pDepth, static_cast<uint16_t*>(v_depth), sizeDepth);
-        else
-            memcpy(pDepth, v_depth, sizeDepth);
+        memcpy(pDepth, v_depth, sizeDepth);
         depth_used = false;
     }
     if(depth_displayed)
@@ -190,7 +187,11 @@ void* thread_depth(void* arg)
             for(int i = 0; i<pointCount; ++i)
             {
                 pointCloud[i].z *= unitConvert;
-                pointCloud[i].y *= unitConvert;
+                if(onOdroid)
+                    pointCloud[i].y *= -unitConvert;/**IF ON ODROID, FLIP IT**/
+                else
+                    pointCloud[i].y *= unitConvert;
+
                 pointCloud[i].x *= unitConvert;
             }
             /**CONVERT POINT CLOUD INTO HEIGHT MAP**/
