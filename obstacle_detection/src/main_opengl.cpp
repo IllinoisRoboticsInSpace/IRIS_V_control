@@ -46,9 +46,13 @@ const int sizeGradientMap = sizeof(int8_t)*((gradientHalfSizeX*2)+1)*((gradientH
 //csk namespace represents CoordinateSystemKinect
 const int sizeDepth = FREENECT_DEPTH_11BIT_SIZE;//we need this much space to represent the depth data
 const int sizeVideo = FREENECT_VIDEO_RGB_SIZE;//we need this much for the video data
+
 /**ROS**/
 const string topicName = "iris_obstacles";//this is the name the listener will look for
 const string myNodeName = "iris_obstacles_talker";
+unsigned int seq = 0;
+string frame_id = "1";
+
 /**FOR THREADS**/
 static volatile bool depth_used = true, video_used = true, depth_displayed = true, map_displayed = true;
 static volatile bool main_stop = false;
@@ -56,7 +60,6 @@ static volatile bool threads_stop = false;
 //we can't just use a mutex because the whole purpose is to not block!
 int argc2;
 char** argv2;
-
 
 /**DATA**/
 static uint16_t* pDepth = NULL;
@@ -221,6 +224,12 @@ void* thread_depth(void* arg)
                 }
                 /**PUT PCL CLOUD INTO ROS CLOUD**/
                 toROSMsg(pclPointCloud, rosPointCloud);
+
+                // set header
+                rosPointCloud.header.seq = ++seq;
+                rosPointCloud.header.frame_id = frame_id;
+                rosPointCloud.header.stamp = ros::Time::now();
+
                 /**PUBLISH**/
                 publisher.publish(rosPointCloud);
                 ROS_INFO("I published %d obstacles!", numObstacles);
