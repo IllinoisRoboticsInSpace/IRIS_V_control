@@ -37,6 +37,7 @@ const int dispHeight = 480;
 const int dispWidth = 480;
 
 /**KINECT**/
+const bool onOdroid = false;
 const int maxViewDist = 2500;//millimeters
 const int minViewDist = 470;//millimeters
 const int gradientHalfSizeX = 80;
@@ -77,16 +78,31 @@ freenect_device* f_dev;
 /**================================================================================**/
 /**DEPTH SENSOR CALLBACK**/
 /**================================================================================**/
+template<typename T>
+void rev_memcpy(T* pDst, const T* pSrc, const size_t size)///MEMCPY IN REVERSE
+{
+    const int totalElements = size/sizeof(T);
+    for(int i=0; i<totalElements; ++i)
+    {
+        pDst[totalElements-1-i] = pSrc[i];
+    }
+}
 void depth_cb(freenect_device* pDevice, void* v_depth, uint32_t timestamp)
 {
     if(depth_used)
     {
-        memcpy(pDepth, v_depth, sizeDepth);
+        if(onOdroid)
+            rev_memcpy<uint16_t>(pDepth, static_cast<uint16_t*>(v_depth), sizeDepth);
+        else
+            memcpy(pDepth, v_depth, sizeDepth);
         depth_used = false;
     }
     if(depth_displayed)
     {
-        memcpy(pDepthDisplay, v_depth, sizeDepth);
+        if(onOdroid)
+            rev_memcpy<uint16_t>(pDepthDisplay, static_cast<uint16_t*>(v_depth), sizeDepth);
+        else
+            memcpy(pDepthDisplay, v_depth, sizeDepth);
         depth_displayed = false;
     }
 }
