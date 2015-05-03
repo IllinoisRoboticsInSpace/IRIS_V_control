@@ -163,12 +163,12 @@ void* thread_kinect(void* arg)
 
     /**SETUP VIDEO**/
     freenect_set_video_callback(f_dev, video_cb);
-//  freenect_set_video_format(f_dev, FREENECT_VIDEO_RGB);
+    freenect_set_video_format(f_dev, FREENECT_VIDEO_RGB);
     freenect_start_video(f_dev);//tell it to start reading rgb
 
     /**SETUP DEPTH**/
     freenect_set_depth_callback(f_dev, depth_cb);//set the function that will be called for each depth call
-//  freenect_set_depth_format(f_dev, FREENECT_DEPTH_11BIT);
+    freenect_set_depth_format(f_dev, FREENECT_DEPTH_11BIT);
     freenect_start_depth(f_dev);//tell it to start reading depth
 
 

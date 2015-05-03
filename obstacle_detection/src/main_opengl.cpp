@@ -11,13 +11,13 @@
 using namespace std;
 /**ROS**/
 #include "ros/ros.h"
-#include "std_msgs/String.h"
-#include "std_msgs/Int8MultiArray.h"
+#include "sensor_msgs/PointCloud2.h"
 #include <sstream>
-#include "sensor_msgs/Image.h"
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_types.h>
 /**IRIS CODE**/
 #include "CoordSystemKinect.hpp"//Kinect Input
-#include "libfreenect/libfreenect.hpp"//Kinect Input
+#include "libfreenect.hpp"//Kinect Input
 #include "Linear.hpp"//Mat3
 #include "Map.hpp"//Map<T>
 /**OPENGL**/
@@ -43,17 +43,11 @@ const int gradientHalfSizeX = 80;
 const int gradientHalfSizeY = 80;
 const int sizeGradientMap = sizeof(int8_t)*((gradientHalfSizeX*2)+1)*((gradientHalfSizeY*2)+1);
 //csk namespace represents CoordinateSystemKinect
-const int sizeDepth = 640*480*3;//FREENECT_DEPTH_11BIT_SIZE;//we need this much space to represent the depth data
-const int sizeVideo = 640*480*sizeof(uint16_t);//FREENECT_VIDEO_RGB_SIZE;//we need this much for the video data
-
+const int sizeDepth = FREENECT_DEPTH_11BIT_SIZE;//we need this much space to represent the depth data
+const int sizeVideo = FREENECT_VIDEO_RGB_SIZE;//we need this much for the video data
 /**ROS**/
-const string topicName = "iris_gradientMapTopic";//this is the name the listener will look for
-const string listenTopic = "/camera/depth/image_raw"; //topic subscribing to for kinect image
-const string myNodeName = "iris_gradientMapTalker";
-ros::Subscriber sub_;
-ros::Publisher pub_;
-const int bufferSize = 20;//size of buffer, if messages accumulate, start throwing away after this many pile up
-
+const string topicName = "iris_obstacles";//this is the name the listener will look for
+const string myNodeName = "iris_obstacles_talker";
 /**FOR THREADS**/
 static volatile bool depth_used = true, video_used = true, depth_displayed = true, map_displayed = true;
 static volatile bool main_stop = false;
@@ -69,7 +63,6 @@ static char* pVideo = NULL;
 static char* pDepthFeed = NULL;
 static char* pMapFeed = NULL;
 static uint16_t* pDepthDisplay = NULL;
-static int8_t* pGradientData = NULL;
 
 static Vec3f downDirection(0,0,0);//static to prevent other files from seeing this
 
@@ -86,30 +79,14 @@ freenect_device* f_dev;
 /**================================================================================**/
 void depth_cb(freenect_device* pDevice, void* v_depth, uint32_t timestamp)
 {
-//  if(depth_used)
-//  {
-//      memcpy(pDepth, v_depth, sizeDepth);
-//      depth_used = false;
-//  }
-//  if(depth_displayed)
-//  {
-//      memcpy(pDepthDisplay, v_depth, sizeDepth);
-//      depth_displayed = false;
-//  }
-}
-
-// ROS VERSION OF THE DEPTH CALLBACK
-void depth_cb_ROS(const sensor_msgs::Image::ConstPtr& depth)
-{
-    ROS_INFO("I received something!");
     if(depth_used)
     {
-        memcpy(pDepth, depth->data.data(), sizeDepth);
+        memcpy(pDepth, v_depth, sizeDepth);
         depth_used = false;
     }
     if(depth_displayed)
     {
-        memcpy(pDepthDisplay, depth->data.data(), sizeDepth);
+        memcpy(pDepthDisplay, v_depth, sizeDepth);
         depth_displayed = false;
     }
 }
@@ -129,12 +106,19 @@ void video_cb(freenect_device* pDevice, void* v_video, uint32_t timestamp)
 /**================================================================================**/
 void* thread_depth(void* arg)
 {
+    /**ROS**/
+    int bufferSize = 20;//size of buffer, if messages accumulate, start throwing away after this many pile up
+    ros::init(argc2, argv2, myNodeName);
+    ros::NodeHandle nodeHandle;
+    ros::Publisher publisher = nodeHandle.advertise<sensor_msgs::PointCloud2>(topicName, bufferSize);
+
+
     while(not threads_stop)
     {
         if(not depth_used && pDepth != NULL)//make sure we don't take an image with bad accelerometer data
         {
             if(downDirection.z == 0)
-                cout << "\nNo Data From Kinect Accelerometer!";
+                ROS_INFO("\nNo Data From Kinect Accelerometer!");
 
             const int pointCount = csk::dimX*csk::dimY;
             Map<float> gradient(Vec2i(gradientHalfSizeX, gradientHalfSizeY));
@@ -192,21 +176,44 @@ void* thread_depth(void* arg)
 
             if(ros::ok())
             {
-                std_msgs::Int8MultiArray gradientArray;///MOVE OUT OF loop???
-                gradientArray.data.clear();//Clear array
+                /**SETUP DATA STRUCTURES*/
+                std::vector<Vec3f> obstacleList;
+                sensor_msgs::PointCloud2 rosPointCloud;
+                pcl::PointCloud<pcl::PointXYZ> pclPointCloud;
 
-                gradient.getData(pGradientData);
-                for(int i=0; i<sizeGradientMap; ++i)
+                /**GET OBSTACLES**/
+                gradient.getData(obstacleList);
+                const int numObstacles = obstacleList.size();
+
+                /**RESIZE CLOUDS**/
+                pclPointCloud.resize(numObstacles);
+                rosPointCloud.width = numObstacles;
+                rosPointCloud.height = 1;
+                rosPointCloud.data.resize(rosPointCloud.width*rosPointCloud.height);
+
+                /**CONVERT AND SET PCL CLOUD**/
+                const float reConvert = (1.0f/unitConvert)/1000.0f;//convert back to meters
+                for(int i=0; i<numObstacles; ++i)
                 {
-                    gradientArray.data.push_back(pGradientData[i]);
+                    obstacleList[i].x *= reConvert;
+                    obstacleList[i].y *= reConvert;
+                    obstacleList[i].z *= reConvert;
+
+                    pclPointCloud[i].x = (obstacleList[i].x);
+                    pclPointCloud[i].y = (obstacleList[i].y);
+                    pclPointCloud[i].z = (obstacleList[i].z);
                 }
-                pub_.publish(gradientArray);
-                ROS_INFO("I published something!");
+                /**PUT PCL CLOUD INTO ROS CLOUD**/
+                toROSMsg(pclPointCloud, rosPointCloud);
+                /**PUBLISH**/
+                publisher.publish(rosPointCloud);
+                ROS_INFO("I published %d obstacles!", numObstacles);
                 ros::spinOnce();
             }
             else
             {
-                perror("ROS NOT OK!");
+                ROS_INFO("ROS NOT OK! 1");
+                perror("ROS NOT OK! 2");
             }
 
 
@@ -232,7 +239,7 @@ void* thread_depth(void* arg)
                         pMapFeed[i+1] = 0;//green
                         pMapFeed[i+2] = 0;//blue
                     }
-                    else if(val == 1)
+                    else if(val == 1)//it is an obstacle
                     {
                         pMapFeed[i+0] = 255;
                         pMapFeed[i+1] = 0;
@@ -280,17 +287,17 @@ void* thread_video(void* arg)
 void* thread_kinect(void* arg)
 {
     /**MISC KINECT COMMANDS**/
-//  freenect_set_tilt_degs(f_dev, -22);//set kinect angle
-//  freenect_set_led(f_dev, static_cast<LED_COLOR>(3));//set kinect LED color, LED_RED, libfreenect.h
+    //freenect_set_tilt_degs(f_dev, -22);//set kinect angle
+    //freenect_set_led(f_dev, static_cast<LED_COLOR>(3));//set kinect LED color, LED_RED, libfreenect.h
 
     /**SETUP VIDEO**/
     freenect_set_video_callback(f_dev, video_cb);
-//  freenect_set_video_format(f_dev, FREENECT_VIDEO_RGB);
+    freenect_set_video_format(f_dev, FREENECT_VIDEO_RGB);
     freenect_start_video(f_dev);//tell it to start reading rgb
 
     /**SETUP DEPTH**/
     freenect_set_depth_callback(f_dev, depth_cb);//set the function that will be called for each depth call
-//  freenect_set_depth_format(f_dev, FREENECT_DEPTH_11BIT);
+    freenect_set_depth_format(f_dev, FREENECT_DEPTH_11BIT);
     freenect_start_depth(f_dev);//tell it to start reading depth
 
 
@@ -325,12 +332,6 @@ int main(int argc, char **argv)
     argc2 = argc;
     argv2 = argv;
 
-    // initialize the ROS stuff
-    ros::init(argc2, argv2, myNodeName);
-    ros::NodeHandle nh_;
-    pub_ = nh_.advertise<std_msgs::Int8MultiArray>(topicName, bufferSize);
-    sub_ = nh_.subscribe<sensor_msgs::Image>(listenTopic, 1, depth_cb_ROS);
-
     /**===================================================**/
     /**ALL ABOUT INITIALIZING THE CONNECTION WITH KINECT!!**/
     /**===================================================**/
@@ -338,7 +339,6 @@ int main(int argc, char **argv)
     pDepthFeed = static_cast<char*>(malloc(sizeVideo));//used to rgb display what the kinect sees
     pDepth = static_cast<uint16_t*>(malloc(sizeDepth));//each point is a uint16_t for depth
     pMapFeed = static_cast<char*>(malloc(sizeVideo));
-    pGradientData = static_cast<int8_t*>(malloc(sizeGradientMap));
     pVideo = static_cast<char*>(malloc(sizeVideo));//each point needs 3 chars to represent the color there (r255,g255,b255)
 
     if(freenect_init(&f_ctx, NULL) < 0)

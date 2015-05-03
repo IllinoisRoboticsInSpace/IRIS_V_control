@@ -135,19 +135,15 @@ public:
     /**PUTS DATA INTO CHAR ARRAY**/
     /** it makes sure it doesn't print anything below a min value, **/
     /**======================**/
-    void getData(int8_t* pData)
+    void getData(std::vector<Vec3f>& rObstacles)
     {
-        int i=0;
         for(int y = -m_halfSize.x; y <= m_halfSize.y; ++y)//start at top row
         {
             for(int x = -m_halfSize.x; x <= m_halfSize.x; ++x)//scanning each row
             {
                 int val = (getPoint(Vec2i(x,y)).value);
-                if(val == defaultValue)
-                    pData[i] = static_cast<int8_t>(100);//100 if it is unknown
-                else
-                    pData[i] = static_cast<int8_t>(val);
-                ++i;
+                if(val == 1)
+                    rObstacles.push_back(Vec3f(x, y, 0));
             }
         }
     }
