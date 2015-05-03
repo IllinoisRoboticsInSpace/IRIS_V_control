@@ -30,39 +30,37 @@ def callback_command(command):
     # the robot physics
     linear = command.command.cmd_vel.linear.x
     angular = command.command.cmd_vel.angular.z
-    left = ((linear + 0.307 * angular) / 2) / 0.32675
-    right = ((linear - 0.307 * angular) / 2) / 0.32675
+    left = ((linear + 0.307 * angular) / 2) / 0.4035
+    right = ((linear - 0.307 * angular) / 2) / 0.4035
     
-    # convert speeds to 0-255 unisgned ascii char
+    # convert speeds to [-1000,1000] integer
     # this might be slightly off still
-    left = (left + 1) / 2
-    if left > 1: left = 1
-    right = (right + 1) / 2
-    if right > 1: right = 1
-    left = math.floor(left*255)
-    right = math.floor(right*255)
+    left = int(left * 1000)
+    if left > 1000: left = 1000
+    if left < -1000: left = -1000
+    right = int(-right * 1000)
+    if right > 1000: right = 1000
+    if right < -1000: right = -1000
+
+    left = str(left)
+    right = str(right)
 
     paddle_position = '1' if command.command.paddle_position else '0'
     bin_position = '1' if command.command.bin_position else '0'
-    paddle_status = '1' if command.command.paddle_status else '0'
+    paddle_onoff = '1' if command.command.paddle_status else '0'
 
-    thingtosend = "%c%c%c%c%c" % (int(left),int(right),paddle_position,
-                                  bin_position,paddle_status)
-#   print('Sent: [%d] [%d] [%c] [%c] [%c]' % (ord(thingtosend[0]),
-#                                       ord(thingtosend[1]),
-#                                       thingtosend[2],
-#                                       thingtosend[3],
-#                                       thingtosend[4]))
-#   if ser.isOpen(): print('serial is open')
+    thingtosend = left + ',' + right + ',' + padde_position + ','
+                  + bin_position + ',' + paddle_onoff + '!' 
+    print(thingtosend)
     ser.write(thingtosend)
     ser.flushOutput()
 
 
 def callback_trigger(trigger):
 #   print("Got triggered")
-    print("Bytes in buffer: ", ser.inWaiting())
+    print('Bytes in buffer: ', ser.inWaiting())
     ack = ser.read(ser.inWaiting())
-    print(ack)
+    print('Ack: ', ack)
     ser.flushInput()
 
 
