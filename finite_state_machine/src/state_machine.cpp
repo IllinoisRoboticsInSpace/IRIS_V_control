@@ -58,7 +58,7 @@ public:
                               &StateMachine::callback_status, this);
     sub_heartbeat = n_.subscribe("/IRIS/heartbeat", 1, 
                                  &StateMachine::callback_heartbeat, this);
-    sub_trigger = n_.subscribe("/IRIS/trigger", 1, 
+    sub_trigger = n_.subscribe("/IRIS/FSM_trigger", 1, 
                                  &StateMachine::callback_trigger, this);
     
     // setup the states for start
