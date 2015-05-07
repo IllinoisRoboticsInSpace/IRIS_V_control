@@ -17,7 +17,7 @@
 #include <IRIS_msgs/RobotCommand.h>
 #include <IRIS_msgs/RobotCommandStamped.h>
 #include <IRIS_msgs/RobotStatus.h>
-#include <IRIS_msgs/RobotStatusStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Header.h>
@@ -85,7 +85,7 @@ public:
     last_heartbeat = ros::Time::now();
   }
 
-  void callback_status(const IRIS_msgs::RobotStatusStamped & robot_status) 
+  void callback_status(const IRIS_msgs::RobotStatus & robot_status) 
   {
     // TODO: implement states that aren't "wait_to_start" and "manual"
     switch (current_state)
