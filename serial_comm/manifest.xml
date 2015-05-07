@@ -1,0 +1,18 @@
+<package>
+  <description brief="serial_comm">
+
+     serial_comm
+
+  </description>
+  <author>Gil</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/serial_comm</url>
+  <depend package="roscpp"/>
+  <depend package="rospy"/>
+  <depend package="IRIS_msgs"/>
+  <depend package="serial"/>
+
+</package>
+
+

@@ -3,11 +3,14 @@
 # The target location
 geometry_msgs/Pose goal
 
-# Desired turbine position. (TRUE = DOWN)
-std_msgs/Bool turbine_position
+# Desired paddle position. (TRUE = DOWN)
+bool paddle_position
 
-# Whether the turbine should be on off. (TRUE = ON)
-std_msgs/Bool turbine_state
+# Whether the paddle should be on off. (TRUE = ON)
+bool paddle_status
 
 # Whether the bin should be up or down. (TRUE = UP)
-std_msgs/Bool bin_position
+bool bin_position
+
+# The velocity command to be sent to the robot
+geometry_msgs/Twist cmd_vel
