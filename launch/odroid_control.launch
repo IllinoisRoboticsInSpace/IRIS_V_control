@@ -3,6 +3,7 @@
   <!-- state machine -->
   <node respawn="true" pkg="finite_state_machine" type="state_machine" 
         name="IRIS_FSM" output="screen">
+    <rosparam command="load" file="state_machine_params.yaml" />
   </node>
 
   <!-- trigger for FSM -->
@@ -19,7 +20,8 @@
     <param name="topic"     value="/IRIS/serial_trigger" />
   </node>
 
-  <!-- relays for goal and odometry data -->
+  <!--
+  relays for goal and odometry data 
   <node respawn="true" pkg="msg_relays" type="goal_relay"
         name="goal_relay" >
     <param name="command_topic" value="/IRIS/command" />
@@ -29,5 +31,6 @@
         name="odom_relay" >
     <param name="status_topic" value="/IRIS/status" />
   </node>
+  -->
 
 </launch>

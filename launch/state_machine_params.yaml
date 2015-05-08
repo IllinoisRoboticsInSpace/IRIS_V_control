@@ -1,0 +1,22 @@
+topic:
+  command:  "/IRIS/command"
+  status:   "/IRIS/status"
+  joy:      "/joy_filtered"
+  beat:     "/IRIS/heartbeat"
+  trigger:  "/IRIS/trigger"
+
+frame_id: "/map"
+timeout:  2000
+
+waypoints:
+  mine:
+    num:    1
+    x:      [1]
+    y:      [1]
+    theta:  [1.5]
+  dump:
+    num:    1
+    x:      [1]
+    y:      [1]
+    theta:  [1.5]
+

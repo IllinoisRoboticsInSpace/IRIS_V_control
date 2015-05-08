@@ -44,21 +44,37 @@ class StateMachine
 public:
   /**
    * StateMachine constructor
-   * Topics are hardcoded for now, but this should be fixed with parameters.
    * Subscribes to Joy command for mission control & RobotStatus for autonomy.
    **/
   StateMachine()
   {
+    nh = ros::NodeHandle();
+    nh_ = ros::NodeHandle("~");
+
+    // set parametrized data
+    ROS_INFO("Setting parameters (1)");
+    nh_.param<std::string>("topic/command", command_topic, "/IRIS/command");
+    nh_.param<std::string>("topic/status", status_topic, "/IRIS/status");
+    nh_.param<std::string>("topic/joy", joy_topic, "/IRIS/joy_filtered");
+    nh_.param<std::string>("topic/beat", heartbeat_topic, "/IRIS/heartbeat");
+    nh_.param<std::string>("topic/trigger", trigger_topic, "/IRIS/trigger");
+    nh_.param<std::string>("frame_id", frame_id, "0");
+    nh_.param<int>("timeout", timeout, 1000);
+    ROS_INFO("Set parameters (1)");
+    ROS_INFO((command_topic + "\n" + status_topic + "\n" + joy_topic + "\n" +
+             heartbeat_topic + "\n" + trigger_topic + "\n" + frame_id).c_str());
+    ROS_INFO("%d", timeout);
+
     // topic to publish (command for the robot)
-    pub_ = n_.advertise<IRIS_msgs::RobotCommandStamped>("/IRIS/command", 1);
+    pub_ = nh.advertise<IRIS_msgs::RobotCommandStamped>(command_topic, 1);
 
     // topics to subscribe
-    sub_joy = n_.subscribe("/joy_filtered", 1, &StateMachine::callback_joy, this);
-    sub_status = n_.subscribe("/IRIS/status", 1,
+    sub_joy = nh.subscribe(joy_topic, 1, &StateMachine::callback_joy, this);
+    sub_status = nh.subscribe(status_topic, 1,
                               &StateMachine::callback_status, this);
-    sub_heartbeat = n_.subscribe("/IRIS/heartbeat", 1, 
+    sub_heartbeat = nh.subscribe(heartbeat_topic, 1, 
                                  &StateMachine::callback_heartbeat, this);
-    sub_trigger = n_.subscribe("/IRIS/FSM_trigger", 1, 
+    sub_trigger = nh.subscribe(trigger_topic, 1, 
                                  &StateMachine::callback_trigger, this);
     
     // setup the states for start
@@ -72,13 +88,58 @@ public:
     command.header.frame_id = frame_id;
     command.header.seq = 0;
 
-    // setup persistent data from parameters (once that's figured out)
-    // hardwired for now
-    frame_id = "1";
-    mine_waypoints = std::vector<geometry_msgs::Pose>();
-    dump_waypoints = std::vector<geometry_msgs::Pose>();
-    max_timeout = 1000;
-    
+    // set waypoints from parameters
+    ROS_INFO("Setting parameters (2)");
+    std::vector<double> mine_x, mine_y, mine_theta, dump_x, dump_y, dump_theta;
+    nh_.param<int>("waypoints/mine/num", num_mine_waypoints, 0);
+    nh_.param<int>("waypoints/dump/num", num_dump_waypoints, 0);
+    nh_.getParam("waypoints/mine/x", mine_x);
+    nh_.getParam("waypoints/mine/y", mine_y);
+    nh_.getParam("waypoints/mine/theta", mine_theta);
+    nh_.getParam("waypoints/dump/x", dump_x);
+    nh_.getParam("waypoints/dump/y", dump_y);
+    nh_.getParam("waypoints/dump/theta", dump_theta);
+    ROS_INFO("Set parameters (2)");
+
+    if (num_mine_waypoints == 0 || num_dump_waypoints == 0)
+    {
+      ROS_ERROR("NO WAYPOINTS");
+      goal_state = manual;
+    }
+    else if (mine_x.size() != num_mine_waypoints || 
+             mine_y.size() != num_mine_waypoints ||
+             mine_theta.size() != num_mine_waypoints ||
+             dump_x.size() != num_dump_waypoints ||
+             dump_y.size() != num_dump_waypoints ||
+             dump_theta.size() != num_dump_waypoints)
+    {
+      ROS_ERROR("Wrong number of waypoints.");
+      goal_state = manual;
+    }
+    else
+    {
+      mine_waypoints.resize(num_mine_waypoints);
+      dump_waypoints.resize(num_dump_waypoints);
+      for (int i = 0; i < num_mine_waypoints; i++)
+      {
+        geometry_msgs::Pose tmp;
+        tmp.position.x = mine_x[i];
+        tmp.position.y = mine_y[i];
+        tmp.orientation = tf::createQuaternionMsgFromYaw(mine_theta[i]);
+        mine_waypoints[i] = tmp;
+      }
+      for (int i = 0; i < num_dump_waypoints; i++)
+      {
+        geometry_msgs::Pose tmp;
+        tmp.position.x = dump_x[i];
+        tmp.position.y = dump_y[i];
+        tmp.orientation = tf::createQuaternionMsgFromYaw(dump_theta[i]);
+        dump_waypoints[i] = tmp;
+      }
+    }
+    ROS_INFO("%d\n%d\n%f",num_mine_waypoints,num_dump_waypoints,
+                          dump_waypoints[0].position.x);
+
     // loop until ros::Time::Now() != 0
     // necessary to get a valid timestamp on published messages
     while (ros::Time::now().sec == 0) {}
@@ -182,7 +243,7 @@ public:
 
   void callback_trigger(const std_msgs::Bool & trigger)
   {
-    if ((ros::Time::now() - last_heartbeat).toNSec() > max_timeout * msec2nsec)
+    if ((ros::Time::now() - last_heartbeat).toNSec() > timeout * msec2nsec)
     {
       ROS_INFO("No heartbeat. Stopping.");
       command.command.cmd_vel = geometry_msgs::Twist();
@@ -205,7 +266,8 @@ public:
 
 private:
   // ROS node stuff
-  ros::NodeHandle n_;
+  ros::NodeHandle nh;
+  ros::NodeHandle nh_;
   ros::Publisher pub_;
   ros::Subscriber sub_joy;
   ros::Subscriber sub_status;
@@ -217,18 +279,27 @@ private:
   state goal_state;
   state current_state;
   ros::Time last_heartbeat;
-  unsigned int max_timeout;
+  int timeout;
 
   // the published command
   IRIS_msgs::RobotCommandStamped command;
 
-  // stuff needed for header
+  // reference frame for goals
   std::string frame_id;
 
+  // topics subscribed and published
+  std::string command_topic;
+  std::string status_topic;
+  std::string joy_topic;
+  std::string heartbeat_topic;
+  std::string trigger_topic;
+
   // postition waypoint variables
+  int num_mine_waypoints;
+  int num_dump_waypoints;
   std::vector<geometry_msgs::Pose> mine_waypoints;
   std::vector<geometry_msgs::Pose> dump_waypoints;
-  unsigned int waypoint_counter;
+  int waypoint_counter;
 
 }; // end of class StateMachine
 
