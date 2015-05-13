@@ -27,10 +27,13 @@
 // define pi for math use
 const double pi = 4 * atan(1.);
 
+// square function
+inline double pow2(double a) {return a * a;}
+
 // list of states for machine
 enum state {wait_to_start, localize, move_to_mine, mine, move_to_dump,
                 dump, manual};
-enum actuator_status {rectracting, down, extending, up};
+enum actuator_status {retracting, down, extending, up};
 enum actuator_command : bool {DOWN = false, UP = true};
 enum paddle_status : bool {OFF = false, ON = true};
 
@@ -52,18 +55,18 @@ public:
     nh_ = ros::NodeHandle("~");
 
     // set parametrized data
-    ROS_INFO("Setting parameters (1)");
     nh_.param<std::string>("topic/command", command_topic, "/IRIS/command");
     nh_.param<std::string>("topic/status", status_topic, "/IRIS/status");
     nh_.param<std::string>("topic/joy", joy_topic, "/IRIS/joy_filtered");
     nh_.param<std::string>("topic/beat", heartbeat_topic, "/IRIS/heartbeat");
-    nh_.param<std::string>("topic/trigger", trigger_topic, "/IRIS/trigger");
+    nh_.param<std::string>("topic/trigger", trigger_topic, "/IRIS/FSM_trigger");
     nh_.param<std::string>("frame_id", frame_id, "0");
     nh_.param<int>("timeout", timeout, 1000);
-    ROS_INFO("Set parameters (1)");
-    ROS_INFO((command_topic + "\n" + status_topic + "\n" + joy_topic + "\n" +
-             heartbeat_topic + "\n" + trigger_topic + "\n" + frame_id).c_str());
-    ROS_INFO("%d", timeout);
+    nh_.param<double>("tolerance/error/position", position_error_tol, 0.1);
+    nh_.param<double>("tolerance/error/orientation", orientation_error_tol, 0.1);
+    nh_.param<double>("tolerance/goal/position", position_goal_tol, 0.1);
+    nh_.param<double>("tolerance/goal/orientation", orientation_goal_tol, 0.1);
+    nh_.param<double>("max_forward_velocity", max_x_velocity, 0.5);
 
     // topic to publish (command for the robot)
     pub_ = nh.advertise<IRIS_msgs::RobotCommandStamped>(command_topic, 1);
@@ -89,7 +92,6 @@ public:
     command.header.seq = 0;
 
     // set waypoints from parameters
-    ROS_INFO("Setting parameters (2)");
     std::vector<double> mine_x, mine_y, mine_theta, dump_x, dump_y, dump_theta;
     nh_.param<int>("waypoints/mine/num", num_mine_waypoints, 0);
     nh_.param<int>("waypoints/dump/num", num_dump_waypoints, 0);
@@ -99,7 +101,6 @@ public:
     nh_.getParam("waypoints/dump/x", dump_x);
     nh_.getParam("waypoints/dump/y", dump_y);
     nh_.getParam("waypoints/dump/theta", dump_theta);
-    ROS_INFO("Set parameters (2)");
 
     if (num_mine_waypoints == 0 || num_dump_waypoints == 0)
     {
@@ -137,8 +138,7 @@ public:
         dump_waypoints[i] = tmp;
       }
     }
-    ROS_INFO("%d\n%d\n%f",num_mine_waypoints,num_dump_waypoints,
-                          dump_waypoints[0].position.x);
+    waypoint_counter = 0;
 
     // loop until ros::Time::Now() != 0
     // necessary to get a valid timestamp on published messages
@@ -146,43 +146,144 @@ public:
     last_heartbeat = ros::Time::now();
   }
 
-  void callback_status(const IRIS_msgs::RobotStatus & robot_status) 
+  void callback_status(const IRIS_msgs::RobotStatus & status) 
   {
-    // TODO: implement states that aren't "wait_to_start" and "manual"
-    switch (current_state)
+    bool done = false;
+    while (!done)
     {
-      // wait_to_start: do nothing
-      case wait_to_start:
-        command.command.cmd_vel = geometry_msgs::Twist();
-        break;
+      switch (current_state)
+      {
+        // wait_to_start: do nothing
+        case wait_to_start:
+          command.command.cmd_vel = geometry_msgs::Twist();
+          done = true;
+          break;
+  
+        // localize: stay in place until good position data
+        case localize:
+          if (errorTooBig(status.odom.pose))
+          {
+            command.command.cmd_vel = geometry_msgs::Twist();
+            done = true;
+          }
+          else
+          {
+            current_state = goal_state;
+          }
+          break;
+  
+        // move_to_mine: move to the mining area (mine_waypoints[0])
+        case move_to_mine:
+          if (status.bin_position != down)
+          {
+            command.command.goal = status.odom.pose.pose;
+            command.command.bin_position = DOWN;
+            done = true;
+          }
+          else if (errorTooBig(status.odom.pose))
+          {
+            goal_state = move_to_mine;
+            current_state = localize;
+          }
+          else if (reachedGoal(status.odom.pose.pose))
+          {
+            current_state = mine;
+            waypoint_counter = 1;
+          }
+          else
+          {
+            command.command.goal = mine_waypoints[0];
+            done = true;
+          }
+          break;
 
-      case localize:
-        command.command.cmd_vel = geometry_msgs::Twist();
-        break;
-
-      case move_to_mine:
-        break;
-
-      case mine:
-        break;
-
-      case move_to_dump:
-        break;
-
-      case dump:
-        break;
-
-      // manual: do nothing
-      case manual:
-        break;
+        // mine: activate and lower paddle, drive through waypoints
+        case mine:
+          if (waypoint_counter == num_mine_waypoints)
+          {
+            current_state = move_to_dump;
+            waypoint_counter = 0;
+          }
+          else if (status.paddle_position != down || status.paddle_status != ON)
+          {
+            command.command.goal = status.odom.pose.pose;
+            command.command.paddle_position = DOWN;
+            command.command.paddle_status = ON;
+            done = true;
+          }
+          else if (errorTooBig(status.odom.pose))
+          {
+            goal_state = mine;
+            current_state = localize;
+          }
+          else if (reachedGoal(status.odom.pose.pose))
+          {
+            waypoint_counter++;
+          }
+          else
+          {
+            command.command.goal = mine_waypoints[waypoint_counter];
+            done = true;
+          }
+          break;
+        
+        // move_to_dump: stop and raise the paddle, drive to the bin
+        case move_to_dump:
+          if (waypoint_counter == num_dump_waypoints)
+          {
+            current_state = dump;
+            waypoint_counter = 0;
+          }
+          else if (status.paddle_position != up || status.paddle_status != OFF)
+          {
+            command.command.goal = status.odom.pose.pose;
+            command.command.paddle_position = UP;
+            command.command.paddle_status = OFF;
+            done = true;
+          }
+          else if (errorTooBig(status.odom.pose))
+          {
+            goal_state = move_to_dump;
+            current_state = localize;
+          }
+          else if (reachedGoal(status.odom.pose.pose))
+          {
+            waypoint_counter++;
+          }
+          else
+          {
+            command.command.goal = dump_waypoints[waypoint_counter];
+            done = true;
+          }
+          break;
+  
+        // dump: raise the bin to dump
+        case dump:
+          if (status.bin_position != UP)
+          {
+            command.command.bin_position = UP;
+            command.command.goal = status.odom.pose.pose;
+            done = true;
+          }
+          else
+          {
+            current_state = move_to_mine;
+          }
+          break;
+  
+        // manual: do nothing
+        case manual:
+          break;
+      }
     }
-
     // publish the command
     command.header.stamp = ros::Time::now();
     command.header.seq++;
     pub_.publish(command);
+    
   }
 
+  /* set states/commands based on joy msg */
   void callback_joy(const sensor_msgs::Joy::ConstPtr & joy)
   {
     last_heartbeat = ros::Time::now();
@@ -192,10 +293,14 @@ public:
     if (joy->buttons[6])
     {
       current_state = manual;
-      command.command.goal = geometry_msgs::Pose();
     }
 
-    // only listen for commands other than switch to manual if in manual state
+    if (joy->buttons[7] && current_state == wait_to_start)
+    {
+      current_state = localize;
+    }
+
+    // only listen for other commands if in manual state 
     if (current_state == manual)
     {
       if (joy->buttons[0])
@@ -225,8 +330,9 @@ public:
 
       double x = joy->axes[1];
       double z = joy->axes[0];
-      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? 0 : x/2;
-      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? 0: z/2;
+      double radius = 0.61;
+      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? 0 : x * max_x_velocity;
+      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? 0: z/2 * max_x_velocity * 2 / radius;
       ROS_INFO("[%f][%f]",x,z);
 
       // publish the command
@@ -236,11 +342,16 @@ public:
     }
   }
 
+  /* set command velocity from move_base, as long as not manual*/
   void callback_cmdvel(const geometry_msgs::Twist & cmd_vel)
   {
-    command.command.cmd_vel = cmd_vel;
+    if (current_state != manual)
+    {
+      command.command.cmd_vel = cmd_vel;
+    }
   }
 
+  /* regularly check if got heartbeat and stop if we lost connection */
   void callback_trigger(const std_msgs::Bool & trigger)
   {
     if ((ros::Time::now() - last_heartbeat).toNSec() > timeout * msec2nsec)
@@ -256,13 +367,36 @@ public:
     }
   }
 
+  /* heartbeat for ensuring we are still connected to mission control */
   void callback_heartbeat(const std_msgs::Bool & beat)
   {
-    ROS_INFO("Got Heartbeat");
     last_heartbeat = ros::Time::now();
     pub_.publish(command);
   }
 
+  /* check if the localization error is greater than the tolerance */
+  bool errorTooBig(geometry_msgs::PoseWithCovariance localization)
+  {
+    double varX = localization.covariance[0];
+    double varY = localization.covariance[7];
+    double varTheta = localization.covariance[35];
+
+    return (varX > pow2(position_error_tol) || 
+            varY > pow2(position_error_tol) ||
+            varTheta > pow2(orientation_error_tol));
+  }
+
+  /* check if reached the goal position */
+  bool reachedGoal(const geometry_msgs::Pose & localization)
+  {
+    double errorX = localization.position.x - command.command.goal.position.x;
+    double errorY = localization.position.y - command.command.goal.position.y;
+    double errorTheta = tf::getYaw(localization.orientation) -
+                        tf::getYaw(command.command.goal.orientation);
+
+    return (pow2(errorX) + pow2(errorY) < pow2(position_goal_tol) &&
+            pow2(errorTheta) < pow2(orientation_error_tol));
+  }
 
 private:
   // ROS node stuff
@@ -300,6 +434,13 @@ private:
   std::vector<geometry_msgs::Pose> mine_waypoints;
   std::vector<geometry_msgs::Pose> dump_waypoints;
   int waypoint_counter;
+
+  // error tolerances
+  double position_error_tol;
+  double orientation_error_tol;
+  double position_goal_tol;
+  double orientation_goal_tol;
+  double max_x_velocity;
 
 }; // end of class StateMachine
 

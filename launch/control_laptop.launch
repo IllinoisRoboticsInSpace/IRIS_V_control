@@ -1,3 +1,5 @@
+<!-- LAUNCH FILE FOR MISSION CONTROL -->
+
 <launch>
 
   <!-- joy node -->
@@ -13,6 +15,8 @@
     <param name="threshold/z"       value="0.12" />
     <param name="threshold/jitter"  value="0.05" />
     <param name="max_rate"          value="10"  type="double" />
+    <param name="min_rate"          value="2"   type="double" />
+    <param name="topic"             value="/IRIS/joy_filtered"/>
   </node>
 
   <!-- heartbeat for FSM -->
