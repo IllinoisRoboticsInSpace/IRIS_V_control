@@ -30,15 +30,17 @@ def callback_command(command):
     # the robot physics
     linear = command.command.cmd_vel.linear.x
     angular = command.command.cmd_vel.angular.z
-    left = ((linear + 0.307 * angular) / 2) # / 0.4035
-    right = ((linear - 0.307 * angular) / 2) # / 0.4035
+    R = 0.61
+    left = (2*linear + R*angular) / 2
+    right = (2*linear - R*angular) / 2
+
     
     # convert speeds to [-1000,1000] integer
     # this might be slightly off still
-    left = int(left * 4000)
+    left = int(left / max_x_velocity * 1000)
     if left > 1000: left = 1000
     if left < -1000: left = -1000
-    right = int(-right * 4000)
+    right = int(-right / max_x_velocity * 1000)
     if right > 1000: right = 1000
     if right < -1000: right = -1000
 
@@ -49,7 +51,8 @@ def callback_command(command):
     bin_position = '1' if command.command.bin_position else '0'
     paddle_onoff = '1' if command.command.paddle_status else '0'
 
-    thingtosend = left + ',' + right + ',' + paddle_position + ',' + bin_position + ',' + paddle_onoff + '#' + '!'
+    thingtosend = (left + ',' + right + ',' + paddle_position + ',' + 
+                   bin_position + ',' + paddle_onoff + '#' + '!')
     print('Sent', thingtosend)
     ser.write(thingtosend)
     ser.flushOutput()

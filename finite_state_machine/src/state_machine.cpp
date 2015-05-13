@@ -66,6 +66,7 @@ public:
     nh_.param<double>("tolerance/error/orientation", orientation_error_tol, 0.1);
     nh_.param<double>("tolerance/goal/position", position_goal_tol, 0.1);
     nh_.param<double>("tolerance/goal/orientation", orientation_goal_tol, 0.1);
+    nh_.param<double>("max_forward_velocity", max_x_velocity, 0.5);
 
     // topic to publish (command for the robot)
     pub_ = nh.advertise<IRIS_msgs::RobotCommandStamped>(command_topic, 1);
@@ -329,8 +330,9 @@ public:
 
       double x = joy->axes[1];
       double z = joy->axes[0];
-      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? 0 : x/2;
-      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? 0: z/2;
+      double radius = 0.61;
+      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? 0 : x * max_x_velocity;
+      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? 0: z/2 * max_x_velocity * 2 / radius;
       ROS_INFO("[%f][%f]",x,z);
 
       // publish the command
@@ -438,6 +440,7 @@ private:
   double orientation_error_tol;
   double position_goal_tol;
   double orientation_goal_tol;
+  double max_x_velocity;
 
 }; // end of class StateMachine
 
