@@ -1,3 +1,5 @@
+<!-- LAUNCH FILE FOR ODROID (things needed for manual) -->
+
 <launch>
 
   <!-- state machine -->
@@ -20,8 +22,7 @@
     <param name="topic"     value="/IRIS/serial_trigger" />
   </node>
 
-  <!--
-  relays for goal and odometry data 
+  <!-- relays for goal and odometry data -->
   <node respawn="true" pkg="msg_relays" type="goal_relay"
         name="goal_relay" >
     <param name="command_topic" value="/IRIS/command" />
@@ -31,6 +32,5 @@
         name="odom_relay" >
     <param name="status_topic" value="/IRIS/status" />
   </node>
-  -->
 
 </launch>

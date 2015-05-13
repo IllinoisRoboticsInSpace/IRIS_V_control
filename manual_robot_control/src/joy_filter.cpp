@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Header.h>
+#include <string>
 
 ros::Subscriber sub_joy;
 ros::Publisher pub;
@@ -12,12 +13,16 @@ double x_deadzone;
 double z_deadzone;
 double jitter_tol;
 double max_stick_rate;
+double min_rate;
 
 // header stuff
 unsigned int seq = 0;
 
 // store previous message
 sensor_msgs::Joy prev = sensor_msgs::Joy();
+
+// the topic to publish
+std::string topic;
 
 void callback_joy(const sensor_msgs::Joy::ConstPtr & tmpjoy)
 {
@@ -91,8 +96,10 @@ int main(int argc, char **argv)
   n_.param<double>("threshold/z", z_deadzone, 0.12);
   n_.param<double>("threshold/jitter", jitter_tol, 0.05);
   n_.param<double>("max_rate", max_stick_rate, 10);
+  n_.param<double>("min_rate", min_rate, 2);
+  n_.param<std::string>("topic", topic, "/IRIS/joy_filtered");
 
-  pub = n.advertise<sensor_msgs::Joy>("/joy_filtered", 1);
+  pub = n.advertise<sensor_msgs::Joy>(topic, 1);
   
   sub_joy = n.subscribe<sensor_msgs::Joy>("/joy", 1, callback_joy);
 

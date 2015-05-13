@@ -1,9 +1,9 @@
 topic:
   command:  "/IRIS/command"
   status:   "/IRIS/status"
-  joy:      "/joy_filtered"
+  joy:      "/IRIS/joy_filtered"
   beat:     "/IRIS/heartbeat"
-  trigger:  "/IRIS/trigger"
+  trigger:  "/IRIS/FSM_trigger"
 
 frame_id: "/map"
 timeout:  2000
@@ -20,3 +20,10 @@ waypoints:
     y:      [1]
     theta:  [1.5]
 
+tolerance:
+  error:
+    position:     0.1
+    orientation:  0.1
+  goal:
+    position:     0.1
+    orientation:  0.1
