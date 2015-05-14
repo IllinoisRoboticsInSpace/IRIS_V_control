@@ -17,18 +17,17 @@ goal of sending motor commands. Dynamics are used to convert the
 cmd_vel to two 8-bit motor speeds 0-255, where 128 is not moving.
 '''
 
-ser = serial.Serial("/dev/ttyACM0", 115200, bytesize=serial.EIGHTBITS,
-                     parity = serial.PARITY_NONE,
-                     stopbits=serial.STOPBITS_ONE,
-                     timeout=2,
-                     xonxoff=0,
-                     rtscts=0)
+# global variables
 left = '0'
 right = '0' 
 bin_movement = '1'
 paddle_movement = '1'
 paddle_onoff = '0' 
-print (ser.readline())
+# parametrized stuff
+max_x_velocity = 0
+use_serial = False
+command_topic = ''
+trigger_topic = ''
 
 def callback_command(command):
     
@@ -39,29 +38,35 @@ def callback_command(command):
     # the robot physics
     linear = command.command.cmd_vel.linear.x
     angular = command.command.cmd_vel.angular.z
-    left = ((linear + 0.307 * angular) / 2) # / 0.4035
-    right = ((linear - 0.307 * angular) / 2) # / 0.4035
+    R = 0.61
+    left = (2*linear - R*angular) / 2
+    right = (2*linear + R*angular) / 2
+
     
     # convert speeds to [-1000,1000] integer
-    # this might be slightly off still
-    left = int(left * 4000)
-    if left > 1000: left = 1000
-    if left < -1000: left = -1000
-    right = int(-right * 4000)
-    if right > 1000: right = 1000
-    if right < -1000: right = -1000
+    left = left / max_x_velocity * 1000.
+    right = -right / max_x_velocity * 1000.
+    if abs(left) > 1000:
+        scale = abs(left) / 1000.
+        left = left / scale
+        right = right / scale
+    if abs(right) > 1000: 
+        scale = abs(right) / 1000.
+        right = right / scale
+        left = left / scale
 
-    left = str(left)
-    right = str(right)
-#   paddle_position = '1' if command.command.paddle_position else '0'
-#   bin_position = '1' if command.command.bin_position else '0'
+    left = str(int(left))
+    right = str(int(right))
+
     paddle_onoff = '1' if command.command.paddle_status else '0'
 
-    thingtosend = (left + ',' + right + ',' + paddle_movement + ',' + 
-                   bin_movement + ',' + paddle_onoff + '#' + '!')
-    print('Sent', thingtosend)
-    ser.write(thingtosend)
-    ser.flushOutput()
+    thingtosend = (left + ',' + right + ',' + paddle_position + ',' + 
+                   bin_position + ',' + paddle_onoff + '#' + '!')
+    print('Sending: ', thingtosend)
+    if use_serial:
+        ser.write(thingtosend)
+        ser.flushOutput()
+
 
 def callback_joy(joy):
     global bin_movement
@@ -83,28 +88,50 @@ def callback_joy(joy):
     else:
         paddle_movement = STAY
 
-    thingtosend = (left + ',' + right + ',' + paddle_movement + ',' + 
-                   bin_movement + ',' + paddle_onoff + '#' + '!')
-    print('Sent', thingtosend)
-    ser.write(thingtosend)
-    ser.flushOutput()
+    if use_serial:
+        thingtosend = (left + ',' + right + ',' + paddle_movement + ',' + 
+                       bin_movement + ',' + paddle_onoff + '#' + '!')
+        print('Sent', thingtosend)
+        ser.write(thingtosend)
+        ser.flushOutput()
 
 def callback_trigger(trigger):
 #   print("Got triggered")
-    print('Bytes in buffer: ', ser.inWaiting())
-    ack = ser.read(ser.inWaiting())
-    print("Ack: ")
-    print(ack).encode('string_escape')
-    ser.flushInput()
+    if use_serial:
+        print('Bytes in buffer: ', ser.inWaiting())
+        ack = ser.read(ser.inWaiting())
+        print("Ack: ")
+        print(ack).encode('string_escape')
+        ser.flushInput()
 
 
 def main():
+    global max_x_velocity
+    global command_topic
+    global trigger_topic
+    global use_serial
+    global ser
     rospy.init_node('serial_comm_python')
-    rospy.Subscriber('/IRIS/command', RobotCommandStamped, callback_command)
-    rospy.Subscriber('/IRIS/serial_trigger', Bool, callback_trigger)
-    rospy.Subscriber('/joy_filtered', Joy, callback_joy)
+    max_x_velocity = rospy.get_param('~max_forward_velocity')
+    use_serial = rospy.get_param('~use_serial')
+    trigger_topic = rospy.get_param('~topic/trigger')
+    command_topic = rospy.get_param('~topic/command')
+    rospy.Subscriber(command_topic, RobotCommandStamped, callback_command)
+    rospy.Subscriber(trigger_topic, Bool, callback_trigger)
+    rospy.Subscriber('/IRIS/joy_filtered', Joy, callback_joy)
+    
+    if use_serial:
+        ser = serial.Serial("/dev/ttyACM0", 115200, bytesize=serial.EIGHTBITS,
+                             parity = serial.PARITY_NONE,
+                             stopbits=serial.STOPBITS_ONE,
+                             timeout=2,
+                             xonxoff=0,
+                             rtscts=0)
+        print (ser.readline())
+
     rospy.spin()
-    ser.close()
+    if use_serial:
+        ser.close()
 
 if __name__ == "__main__":
     main()

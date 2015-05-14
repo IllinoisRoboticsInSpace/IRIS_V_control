@@ -4,7 +4,7 @@
 
   <!-- state machine -->
   <node respawn="true" pkg="finite_state_machine" type="state_machine" 
-        name="IRIS_FSM" output="screen">
+        name="IRIS_FSM" output="screen" >
     <rosparam command="load" file="launch/state_machine_params.yaml" />
   </node>
 
@@ -32,5 +32,15 @@
         name="odom_relay" >
     <param name="status_topic" value="/IRIS/status" />
   </node>
+
+  <!-- arduino serial communication node -->
+  <node respawn="true" pkg="serial_comm" type="arduino_comm.py"
+        name="arduino_comm" output="screen" >
+    <param name="topic/command" value="/IRIS/command" />
+    <param name="topic/trigger" value="/IRIS/serial_trigger" />
+    <param name="use_serial"    value="False" />
+    <param name="max_forward_velocity"  value="0.5" />
+  </node>
+
 
 </launch>

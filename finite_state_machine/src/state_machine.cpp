@@ -331,8 +331,10 @@ public:
       double x = joy->axes[1];
       double z = joy->axes[0];
       double radius = 0.61;
-      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? 0 : x * max_x_velocity;
-      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? 0: z/2 * max_x_velocity * 2 / radius;
+      command.command.cmd_vel.linear.x = (x > -0.06 && x < 0.06) ? 0 : 
+                                          x * max_x_velocity;
+      command.command.cmd_vel.angular.z = (z > -0.12 && z < 0.12) ? 0: 
+                                          z * max_x_velocity * 2 / radius;
       ROS_INFO("[%f][%f]",x,z);
 
       // publish the command
