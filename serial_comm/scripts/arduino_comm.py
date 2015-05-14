@@ -6,9 +6,11 @@ import rospy
 import serial
 import math
 import time
+from geometry_msgs.msg import Quaternion
 from IRIS_msgs.msg import RobotCommandStamped
-from IRIS_msgs.msg import RobotStatusStamped
+from IRIS_msgs.msg import RobotStatus
 from std_msgs.msg import Bool
+from tf.transformations import quaternion_from_euler
 
 '''
 This is is mainly to test serial communication functionality with the
@@ -20,6 +22,11 @@ max_x_velocity = 0
 use_serial = False
 command_topic = ''
 trigger_topic = ''
+status_topic = ''
+frame_id = ''
+child_frame_id = ''
+last_status = RobotStatus()
+seq = 0
 
 def callback_command(command):
     
@@ -60,13 +67,54 @@ def callback_command(command):
 
 
 def callback_trigger(trigger):
-#   print("Got triggered")
-    if use_serial:
-       print('Bytes in buffer: ', ser.inWaiting())
-       ack = ser.read(ser.inWaiting())
-       print("Ack: ")
-       print(ack).encode('string_escape')
-       ser.flushInput()
+    global last_status
+    global seq
+    status = last_status
+
+    if !use_serial:
+        return
+
+    # check if we got any data
+    buffer_length = ser.inWaiting()
+    print('Bytes in buffer: ', buffer_length)
+    if buffer_length == 0: return
+
+    # read serial data
+    data_buffer = ser.read(buffer_length)
+    ser.flushInput()
+    
+    # see if we got a valid message
+    messages = data_buffer.split('!')
+    good_data = False
+    for i in reversed(range(len(messages))):
+        message = messages(i)
+        if message.endswith('#'):
+            good_data = True
+            break
+    if !good_data: return
+
+    # parse the message
+    message = message[0:-1]
+    status_data = message.split(',')
+    status.odom.pose.pose.position.x = float(status_data[0])
+    status.odom.pose.pose.position.y = float(status_data[1])
+    orientation = Quaternion(*quaternion_from_euler(float(status_data[2])))
+    status.odom.pose.pose.orientation = quaternion
+    status.odom.pose.covariance[0] = float(status_data[3])
+    status.odom.pose.covariance[7] = float(status_data[4])
+    status.odom.pose.covariance[35] = float(status_data[5])
+    status.odom.twist.twist.linear.x = float(status_data[6])
+    status.odom.twist.twist.angular.z = float(status_data[7])
+    status.bin_position = int(status_data[8])
+    status.paddle_position = int(status_data[9])
+    status.paddle_status = bool(status_data[10])
+
+    # header stuff and publish
+    status.odom.header.seq = seq
+    seq = seq + 1
+    status.odom.header.stamp = rospy.rostime.Time.now()
+    last_status = status
+    pub.publish(status)
 
 
 def main():
@@ -74,14 +122,27 @@ def main():
     global command_topic
     global trigger_topic
     global use_serial
+    global frame_id
+    global child_frame_id
+    global last_status
     global ser
+    global pub
+
     rospy.init_node('serial_comm_python')
     max_x_velocity = rospy.get_param('~max_forward_velocity')
     use_serial = rospy.get_param('~use_serial')
     trigger_topic = rospy.get_param('~topic/trigger')
     command_topic = rospy.get_param('~topic/command')
+    status_topic = rospy.get_param('~topic/status')
+    frame_id = rospy.get_param('~frame_id/parent')
+    child_frame_id = rospy.get_param('~frame_id/child')
+    
+    last_status.odom.header.frame_id = frame_id
+    last_status.odom.child_frame_id = child_frame_id
+
     rospy.Subscriber(command_topic, RobotCommandStamped, callback_command)
     rospy.Subscriber(trigger_topic, Bool, callback_trigger)
+    pub = rospy.Publisher(status_topic, RobotStatus, queue_size=1)
     
     if use_serial:
         ser = serial.Serial("/dev/ttyACM0", 115200, bytesize=serial.EIGHTBITS,
