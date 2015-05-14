@@ -66,6 +66,11 @@ so might as well do it to be safe.
 
 7) `cd IRIS_V_control`
 
+__Note__: Make sure the arduino is plugged into the odroid if you want to talk to motors.
+If you are using the arduino, also make sure the "use_serial" parameter is set to "True"
+in the "odroid_control.launch" file. If you want to test everything without actual serial
+communication, set that parameter to "False"
+
 8) `roslaunch launch/odroid_control.launch`
 
 9) In another termal tab: `export ROS_MASTER_URI=http://odroid-desktop:11311`
@@ -80,12 +85,6 @@ wrong with the network setup. If you're getting it, then kill the echo (`Ctrl+c`
 
 13) `roslaunch launch/control_laptop.launch`
 
-14) In another terminal tab: `ssh odroid@odroid-desktop`
-
-15) `rosrun serial_comm arduino_comm.py` (To start communication with arduino.) <br \>
-If you get an error, you may need to unplug and replug the arduino so that it ends up 
-on "/dev/TTYACM0".
-
 ### Without odroid (do everything on control laptop for testing)
 
 __Note__: The steps telling you to export ROS_MASTER are optional for running the code,
@@ -93,7 +92,10 @@ but if you will want to echo any of the topics it becomes necessary.
 
 1) Make sure the XBOX controller is plugged into the control laptop
 
-2) Make sure the arduino is plugged into the control laptop if you want to talk to motors
+2) Make sure the arduino is plugged into the control laptop if you want to talk to motors.
+If you are using the arduino, also make sure the "use_serial" parameter is set to "True"
+in the "odroid_control.launch" file. If you want to test everything without actual serial
+communication, set that parameter to "False"
 
 2) `export ROS_MASTER_URI=http://localhost:11311`
 
@@ -107,12 +109,6 @@ but if you will want to echo any of the topics it becomes necessary.
 `export ROS_MASTER_URI=http://localhost:11311`
 
 7) `roslaunch launch/control_laptop.launch`
-
-8) In another new terminal: `export ROS_MASTER_URI=http://localhost:11311`
-
-9) `rosrun serial_comm arduino_comm.py` (To start communication with arduino.) <br \>
-If you get an error, you may need to unplug and replug the arduino so that it ends up 
-on "/dev/TTYACM0". Skip this step if you're not using the arduino.
 
 
 ## Package list
