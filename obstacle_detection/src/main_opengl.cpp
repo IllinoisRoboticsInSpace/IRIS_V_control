@@ -8,6 +8,7 @@
 #include <pthread.h>//pthreads
 #include <string.h>//strcpy
 #include <vector> //for std::vector
+#include <signal.h>//sighandler
 using namespace std;
 
 /**ROS**/
@@ -42,9 +43,10 @@ const int dispWidth = 480;
 /**KINECT**/
 const int numMaps = 4;//how many maps do we use per publish(to remove bad data)
 const bool onOdroid = false;
+const bool useOpenGL = true;
 const int maxViewDist = 2500;//millimeters
 const int minViewDist = 470;//millimeters
-const float unitConvert = 1.0f/50.0f;
+const float unitConvert = 1.0f/100.0f;
 const int gradientHalfSizeX = 80;
 const int gradientHalfSizeY = 80;
 const int minObstacleGroup = 2;
@@ -105,11 +107,14 @@ void depth_cb(freenect_device* pDevice, void* v_depth, uint32_t timestamp)
     }
     if(depth_displayed)
     {
-        if(onOdroid)
-            rev_memcpy<uint16_t>(pDepthDisplay, static_cast<uint16_t*>(v_depth), sizeDepth);
-        else
-            memcpy(pDepthDisplay, v_depth, sizeDepth);
-        depth_displayed = false;
+        if(useOpenGL)
+        {
+            if(onOdroid)
+                rev_memcpy<uint16_t>(pDepthDisplay, static_cast<uint16_t*>(v_depth), sizeDepth);
+            else
+                memcpy(pDepthDisplay, v_depth, sizeDepth);
+            depth_displayed = false;
+        }
     }
 }
 /**================================================================================**/
@@ -117,11 +122,12 @@ void depth_cb(freenect_device* pDevice, void* v_depth, uint32_t timestamp)
 /**================================================================================**/
 void video_cb(freenect_device* pDevice, void* v_video, uint32_t timestamp)
 {
-    if(video_used)
-    {
-        memcpy(pVideo, v_video, sizeVideo);
-        video_used = false;
-    }
+    if(useOpenGL)
+        if(video_used)
+        {
+            memcpy(pVideo, v_video, sizeVideo);
+            video_used = false;
+        }
 }
 /**================================================================================**/
 /**DEPTH PROCESS THREAD**/
@@ -275,40 +281,40 @@ void* thread_depth(void* arg)
             const int xOff = 80;
             const int yOff = 80;
 
-
-            if(map_displayed)
-            {
-                for(int i=0; i<sizeVideo; i+=3)
+            if(useOpenGL)
+                if(map_displayed)
                 {
-                    int x = i/3;
-                    float val = tempGrad.getPoint(Vec2i( (((x%csk::dimX))/xScale-xOff), -((x/csk::dimX)/yScale -yOff))).value;
-                    if(val == map_unknown)//defaultValue, no knowledge (set in Map.hpp)
+                    for(int i=0; i<sizeVideo; i+=3)
                     {
-                        pMapFeed[i+0] = 0;//red
-                        pMapFeed[i+1] = 0;//green
-                        pMapFeed[i+2] = 0;//blue
+                        int x = i/3;
+                        float val = tempGrad.getPoint(Vec2i( (((x%csk::dimX))/xScale-xOff), -((x/csk::dimX)/yScale -yOff))).value;
+                        if(val == map_unknown)//defaultValue, no knowledge (set in Map.hpp)
+                        {
+                            pMapFeed[i+0] = 0;//red
+                            pMapFeed[i+1] = 0;//green
+                            pMapFeed[i+2] = 0;//blue
+                        }
+                        else if(val == map_occupied)//it is an obstacle
+                        {
+                            pMapFeed[i+0] = 255;
+                            pMapFeed[i+1] = 0;
+                            pMapFeed[i+2] = 0;
+                        }
+                        else if(val == map_unoccupied) //it is clear
+                        {
+                            pMapFeed[i+0] = 255;
+                            pMapFeed[i+1] = 255;
+                            pMapFeed[i+2] = 255;
+                        }
+                        else//something went wrong
+                        {
+                            pMapFeed[i+0] = 0;
+                            pMapFeed[i+1] = 0;
+                            pMapFeed[i+2] = 255;
+                        }
                     }
-                    else if(val == map_occupied)//it is an obstacle
-                    {
-                        pMapFeed[i+0] = 255;
-                        pMapFeed[i+1] = 0;
-                        pMapFeed[i+2] = 0;
-                    }
-                    else if(val == map_unoccupied) //it is clear
-                    {
-                        pMapFeed[i+0] = 255;
-                        pMapFeed[i+1] = 255;
-                        pMapFeed[i+2] = 255;
-                    }
-                    else//something went wrong
-                    {
-                        pMapFeed[i+0] = 0;
-                        pMapFeed[i+1] = 0;
-                        pMapFeed[i+2] = 255;
-                    }
+                    map_displayed = false;
                 }
-                map_displayed = false;
-            }
             depth_used = true;
             ++gradientIterator;
         }
@@ -378,8 +384,6 @@ void* thread_kinect(void* arg)
 
 
 
-
-
 /**================================================================================**/
 /**=================================  MAIN  =======================================**/
 /**================================================================================**/
@@ -426,14 +430,20 @@ int main(int argc, char **argv)
 
 
     /**THREADS TO SIMULTANEOUSLY RUN THE SENSOR INPUT AND COMPUTATION**/
-    pthread_t kinect_t;
-    pthread_t depth_t;
-    pthread_t video_t;
-    pthread_t display_t;
+    pthread_t kinect_t = 0;
+    pthread_t depth_t = 0;
+    pthread_t video_t = 0;
+    pthread_t display_t = 0;
     int kinect = pthread_create(&kinect_t, NULL, thread_kinect, NULL);
     int map = pthread_create(&depth_t, NULL, thread_depth, NULL);
-    int video = pthread_create(&video_t, NULL, thread_video, NULL);
-    int display = pthread_create(&display_t, NULL, thread_display, NULL);
+    int video = 0;
+    int display = 0;
+    if(useOpenGL)
+    {
+        video = pthread_create(&video_t, NULL, thread_video, NULL);
+        display = pthread_create(&display_t, NULL, thread_display, NULL);
+    }
+
     /**MAKE SURE THEY WERE CREATED**/
     if(kinect or map or video or display)
     {
@@ -452,6 +462,14 @@ int main(int argc, char **argv)
             main_stop = true;*/
     }
     threads_stop = true;
+
+    pthread_join(kinect_t, NULL);
+    pthread_join(depth_t, NULL);
+    if(useOpenGL)
+    {
+        pthread_join(video_t, NULL);
+        pthread_join(display_t, NULL);
+    }
 
     free(pDepthDisplay);
     free(pDepthFeed);
