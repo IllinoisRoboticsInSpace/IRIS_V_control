@@ -36,10 +36,13 @@
   <!-- arduino serial communication node -->
   <node respawn="true" pkg="serial_comm" type="arduino_comm.py"
         name="arduino_comm" output="screen" >
-    <param name="topic/command" value="/IRIS/command" />
-    <param name="topic/trigger" value="/IRIS/serial_trigger" />
-    <param name="use_serial"    value="False" />
+    <param name="topic/command"         value="/IRIS/command" />
+    <param name="topic/trigger"         value="/IRIS/serial_trigger" />
+    <param name="topic/status"          value="/IRIS/status" />
+    <param name="use_serial"            value="False" />
     <param name="max_forward_velocity"  value="0.5" />
+    <param name="frame_id/parent"       value="/map" />
+    <param name="frame_id/child"        value="/robot_link" />
   </node>
 
 
