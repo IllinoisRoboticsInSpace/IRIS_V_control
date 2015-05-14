@@ -46,10 +46,12 @@ const bool onOdroid = false;
 const bool useOpenGL = true;
 const int maxViewDist = 2500;//millimeters
 const int minViewDist = 470;//millimeters
-const float unitConvert = 1.0f/100.0f;
+const float cellSizeMillis = 100.0f;
 const int gradientHalfSizeX = 80;
 const int gradientHalfSizeY = 80;
 const int minObstacleGroup = 2;
+const float cellStepTolerance = 0.5;//fraction of a cells size that a cell
+//must change in height to be marked as steep
 const int sizeGradientMap = sizeof(int8_t)*((gradientHalfSizeX*2)+1)*((gradientHalfSizeY*2)+1);
 //csk namespace represents CoordinateSystemKinect
 const int sizeDepth = FREENECT_DEPTH_11BIT_SIZE;//we need this much space to represent the depth data
@@ -60,6 +62,8 @@ const string topicName = "iris_obstacles";//this is the name the listener will l
 const string myNodeName = "iris_obstacles_talker";
 unsigned int seq = 0;
 string frame_id = "1";
+ros::Publisher publisher;
+
 
 /**FOR THREADS**/
 static volatile bool depth_used = true, video_used = true, depth_displayed = true, map_displayed = true;
@@ -134,12 +138,6 @@ void video_cb(freenect_device* pDevice, void* v_video, uint32_t timestamp)
 /**================================================================================**/
 void* thread_depth(void* arg)
 {
-    /**ROS**/
-    int bufferSize = 20;//size of buffer, if messages accumulate, start throwing away after this many pile up
-    ros::init(argc2, argv2, myNodeName);
-    ros::NodeHandle nodeHandle;
-    ros::Publisher publisher = nodeHandle.advertise<sensor_msgs::PointCloud2>(topicName, bufferSize);
-
     int gradientIterator = 0;
     std::vector<Map<float> > gradList;
     for(int i=0; i<numMaps; ++i)
@@ -194,13 +192,13 @@ void* thread_depth(void* arg)
             //this also determines the representative size of the cells in the map
             for(int i = 0; i<pointCount; ++i)
             {
-                pointCloud[i].z *= unitConvert;
+                pointCloud[i].z *= 1.0f / cellSizeMillis;
                 if(onOdroid)
-                    pointCloud[i].y *= -unitConvert;/**IF ON ODROID, FLIP IT**/
+                    pointCloud[i].y *= -1.0f / cellSizeMillis;/**IF ON ODROID, FLIP IT**/
                 else
-                    pointCloud[i].y *= unitConvert;
+                    pointCloud[i].y *= 1.0f / cellSizeMillis;
 
-                pointCloud[i].x *= unitConvert;
+                pointCloud[i].x *= 1.0f / cellSizeMillis;
             }
             /**CONVERT POINT CLOUD INTO HEIGHT MAP**/
             for(int i = 0; i<pointCount; ++i)
@@ -208,9 +206,7 @@ void* thread_depth(void* arg)
                 if(height.getPoint(Vec2i(pointCloud[i].x, pointCloud[i].y)).value < pointCloud[i].z)
                     height.getPoint(Vec2i(pointCloud[i].x, pointCloud[i].y)).value = pointCloud[i].z;
             }
-            /**REMOVE STRANGE VALUES FROM MAP**/
-            const float cellStepTolerance = 0.5;//fraction of a cells size that a cell
-            //can change in height and will be marked as steep afterward
+            /**REMOVE STRANGE VALUES FROM MAP (filter stuff)**/
             height.makeGradient(gradList[gradientIterator], cellStepTolerance);//tolerance
             height.makeGradient(tempGrad, cellStepTolerance);///SHOULD USE COPY FIX ME HELP DEBUG=================
 
@@ -239,12 +235,12 @@ void* thread_depth(void* arg)
                 rosPointCloud.data.resize(rosPointCloud.width*rosPointCloud.height);
 
                 /**CONVERT AND SET PCL CLOUD**/
-                const float reConvert = (1.0f/unitConvert)/1000.0f;//convert back to meters
+                const float gridSizeMeters = cellSizeMillis/1000.0f;//convert back to meters
                 for(int i=0; i<numObstacles; ++i)
                 {
-                    obstacleList[i].x *= reConvert;
-                    obstacleList[i].y *= reConvert;
-                    obstacleList[i].z *= reConvert;
+                    obstacleList[i].x *= gridSizeMeters;
+                    obstacleList[i].y *= gridSizeMeters;
+                    obstacleList[i].z *= gridSizeMeters;
 
                     pclPointCloud[i].x = (obstacleList[i].x);
                     pclPointCloud[i].y = (obstacleList[i].y);
@@ -278,8 +274,6 @@ void* thread_depth(void* arg)
             //cout << "\n\tDepth Processed.";
             const int xScale = 4;
             const int yScale = 3;
-            const int xOff = 80;
-            const int yOff = 80;
 
             if(useOpenGL)
                 if(map_displayed)
@@ -287,7 +281,7 @@ void* thread_depth(void* arg)
                     for(int i=0; i<sizeVideo; i+=3)
                     {
                         int x = i/3;
-                        float val = tempGrad.getPoint(Vec2i( (((x%csk::dimX))/xScale-xOff), -((x/csk::dimX)/yScale -yOff))).value;
+                        float val = tempGrad.getPoint(Vec2i( (((x%csk::dimX))/xScale-gradientHalfSizeX), -((x/csk::dimX)/yScale-gradientHalfSizeY))).value;
                         if(val == map_unknown)//defaultValue, no knowledge (set in Map.hpp)
                         {
                             pMapFeed[i+0] = 0;//red
@@ -391,6 +385,12 @@ int main(int argc, char **argv)
 {
     argc2 = argc;
     argv2 = argv;
+
+    /**ROS**/
+    int bufferSize = 20;//size of buffer, if messages accumulate, start throwing away after this many pile up
+    ros::init(argc2, argv2, myNodeName);
+    ros::NodeHandle nodeHandle;
+    publisher = nodeHandle.advertise<sensor_msgs::PointCloud2>(topicName, bufferSize);
 
     /**===================================================**/
     /**ALL ABOUT INITIALIZING THE CONNECTION WITH KINECT!!**/
