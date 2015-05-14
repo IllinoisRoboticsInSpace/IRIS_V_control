@@ -41,27 +41,26 @@ const int dispHeight = 480;
 const int dispWidth = 480;
 
 /**KINECT**/
-const int numMaps = 4;//how many maps do we use per publish(to remove bad data)
-const bool onOdroid = false;
-const bool useOpenGL = true;
-const int maxViewDist = 2500;//millimeters
-const int minViewDist = 470;//millimeters
-const float cellSizeMillis = 100.0f;
-const int gradientHalfSizeX = 80;
-const int gradientHalfSizeY = 80;
-const int minObstacleGroup = 2;
-const float cellStepTolerance = 0.5;//fraction of a cells size that a cell
-//must change in height to be marked as steep
-const int sizeGradientMap = sizeof(int8_t)*((gradientHalfSizeX*2)+1)*((gradientHalfSizeY*2)+1);
+int numMaps;//how many maps do we use per publish(to remove bad data)
+bool onOdroid;
+bool useOpenGL;
+int maxViewDist;//millimeters
+int minViewDist;//millimeters
+double cellSizeMillis;
+int gradientHalfSizeX;
+int gradientHalfSizeY;
+int minObstacleGroup;
+double cellStepTolerance; //fraction of a cells size that a cell must change in height to be marked as steep
+int sizeGradientMap;
 //csk namespace represents CoordinateSystemKinect
 const int sizeDepth = FREENECT_DEPTH_11BIT_SIZE;//we need this much space to represent the depth data
 const int sizeVideo = FREENECT_VIDEO_RGB_SIZE;//we need this much for the video data
 
 /**ROS**/
-const string topicName = "iris_obstacles";//this is the name the listener will look for
+string topicName; //this is the name the listener will look for
 const string myNodeName = "iris_obstacles_talker";
 unsigned int seq = 0;
-string frame_id = "1";
+string frame_id;
 ros::Publisher publisher;
 
 
@@ -192,13 +191,13 @@ void* thread_depth(void* arg)
             //this also determines the representative size of the cells in the map
             for(int i = 0; i<pointCount; ++i)
             {
-                pointCloud[i].z *= 1.0f / cellSizeMillis;
+                pointCloud[i].z *= 1. / cellSizeMillis;
                 if(onOdroid)
-                    pointCloud[i].y *= -1.0f / cellSizeMillis;/**IF ON ODROID, FLIP IT**/
+                    pointCloud[i].y *= -1. / cellSizeMillis;/**IF ON ODROID, FLIP IT**/
                 else
-                    pointCloud[i].y *= 1.0f / cellSizeMillis;
+                    pointCloud[i].y *= 1. / cellSizeMillis;
 
-                pointCloud[i].x *= 1.0f / cellSizeMillis;
+                pointCloud[i].x *= 1. / cellSizeMillis;
             }
             /**CONVERT POINT CLOUD INTO HEIGHT MAP**/
             for(int i = 0; i<pointCount; ++i)
@@ -235,7 +234,7 @@ void* thread_depth(void* arg)
                 rosPointCloud.data.resize(rosPointCloud.width*rosPointCloud.height);
 
                 /**CONVERT AND SET PCL CLOUD**/
-                const float gridSizeMeters = cellSizeMillis/1000.0f;//convert back to meters
+                const double gridSizeMeters = cellSizeMillis/1000.;//convert back to meters
                 for(int i=0; i<numObstacles; ++i)
                 {
                     obstacleList[i].x *= gridSizeMeters;
@@ -390,7 +389,21 @@ int main(int argc, char **argv)
     int bufferSize = 20;//size of buffer, if messages accumulate, start throwing away after this many pile up
     ros::init(argc2, argv2, myNodeName);
     ros::NodeHandle nodeHandle;
+    ros::NodeHandle nh_("~");
+    nh_.param<bool>("flags/onOdroid", onOdroid, false);
+    nh_.param<bool>("flags/useOpenGL", useOpenGL, true);
+    nh_.param<string>("frame_id", frame_id, "0");
+    nh_.param<string>("topic", topicName, "/IRIS/obstacles");
+    nh_.param<int>("grid/num_maps", numMaps, 4);
+    nh_.param<int>("grid/min_surrounding_obstacles", minObstacleGroup, 2);
+    nh_.param<int>("grid/max_view_dist", maxViewDist, 3000);
+    nh_.param<int>("grid/min_view_dist", minViewDist, 470);
+    nh_.param<double>("grid/cell_size_millis", cellSizeMillis, 100.);
+    nh_.param<double>("grid/step_tolerance", cellStepTolerance, 0.5);
+    gradientHalfSizeX = int(maxViewDist / cellSizeMillis) + 5;
+    gradientHalfSizeY = int(maxViewDist / cellSizeMillis) + 5;
     publisher = nodeHandle.advertise<sensor_msgs::PointCloud2>(topicName, bufferSize);
+    sizeGradientMap = sizeof(int8_t)*((gradientHalfSizeX*2)+1)*((gradientHalfSizeY*2)+1);
 
     /**===================================================**/
     /**ALL ABOUT INITIALIZING THE CONNECTION WITH KINECT!!**/

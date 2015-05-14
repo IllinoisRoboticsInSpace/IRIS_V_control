@@ -1,0 +1,8 @@
+<launch>
+
+  <node respawn="false" pkg="obstacle_detection"
+        type="opengl_exe" name="kinec_thing" output="screen">
+      <rosparam command="load" file="launch/kinect_params.yaml" />
+  </node>
+
+</launch>
