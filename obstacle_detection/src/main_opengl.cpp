@@ -44,8 +44,10 @@ const int numMaps = 4;//how many maps do we use per publish(to remove bad data)
 const bool onOdroid = false;
 const int maxViewDist = 2500;//millimeters
 const int minViewDist = 470;//millimeters
+const float unitConvert = 1.0f/50.0f;
 const int gradientHalfSizeX = 80;
 const int gradientHalfSizeY = 80;
+const int minObstacleGroup = 2;
 const int sizeGradientMap = sizeof(int8_t)*((gradientHalfSizeX*2)+1)*((gradientHalfSizeY*2)+1);
 //csk namespace represents CoordinateSystemKinect
 const int sizeDepth = FREENECT_DEPTH_11BIT_SIZE;//we need this much space to represent the depth data
@@ -182,7 +184,7 @@ void* thread_depth(void* arg)
                 pointCloud[i] = pitchRoll*pointCloud[i];
             }
             /**POINT CLOUD UNITS ADJUSTED FOR HUMAN VIEWING**/
-            const float unitConvert = 1.0f/50.0f;//half decimeters (50 times larger than a millimeter is half a decimeter)
+            //half decimeters (50 times larger than a millimeter is half a decimeter)
             //this also determines the representative size of the cells in the map
             for(int i = 0; i<pointCount; ++i)
             {
@@ -214,9 +216,11 @@ void* thread_depth(void* arg)
                 sensor_msgs::PointCloud2 rosPointCloud;
                 pcl::PointCloud<pcl::PointXYZ> pclPointCloud;
 
-                /**AND TOGETHER GRADIENTS**/
+                /**AND TOGETHER GRADIENTS and APPLY FILTER**/
                 for(int i=0; i<numMaps; ++i)
                     tempGrad.andTogether(gradList[i]);
+
+                tempGrad.filterNum(minObstacleGroup);
 
                 /**GET OBSTACLES**/
                 tempGrad.getData(obstacleList);
@@ -278,19 +282,19 @@ void* thread_depth(void* arg)
                 {
                     int x = i/3;
                     float val = tempGrad.getPoint(Vec2i( (((x%csk::dimX))/xScale-xOff), -((x/csk::dimX)/yScale -yOff))).value;
-                    if(val == -9999.0f)//defaultValue, no knowledge (set in Map.hpp)
+                    if(val == map_unknown)//defaultValue, no knowledge (set in Map.hpp)
                     {
                         pMapFeed[i+0] = 0;//red
                         pMapFeed[i+1] = 0;//green
                         pMapFeed[i+2] = 0;//blue
                     }
-                    else if(val == 1)//it is an obstacle
+                    else if(val == map_occupied)//it is an obstacle
                     {
                         pMapFeed[i+0] = 255;
                         pMapFeed[i+1] = 0;
                         pMapFeed[i+2] = 0;
                     }
-                    else if(val == 0)//it is clear
+                    else if(val == map_unoccupied) //it is clear
                     {
                         pMapFeed[i+0] = 255;
                         pMapFeed[i+1] = 255;
