@@ -8,7 +8,7 @@ grid:
 
 flags:
   onOdroid: False
-  useOpenGL: True
+  useOpenGL: False
 
 frameID: "/camera_frame"
 

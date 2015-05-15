@@ -24,7 +24,11 @@ rosbuild_add_compile_flags(opengl_exe -lfreenect -lGL -lGLU -lglut)
 rosbuild_add_link_flags(opengl_exe -lfreenect -lGL -lGLU -lglut)
 target_link_libraries(opengl_exe -lfreenect -lGL -lGLU -lglut)
 
-
+#simulated_kinect
+rosbuild_add_executable(simulate_kinect src/simulated_kinect.cpp src/CoordSystemKinect.cpp src/TrigLookup.cpp)
+rosbuild_add_compile_flags(simulate_kinect -lfreenect -lGL -lGLU -lglut)
+rosbuild_add_link_flags(simulate_kinect -lfreenect -lGL -lGLU -lglut)
+target_link_libraries(simulate_kinect -lfreenect -lGL -lGLU -lglut)
 
 #simple_exe
 rosbuild_add_executable(simple_exe src/main_simple.cpp src/CoordSystemKinect.cpp src/TrigLookup.cpp)
