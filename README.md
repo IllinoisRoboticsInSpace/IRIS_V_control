@@ -4,12 +4,19 @@ The finite state machine and related packages.
 
 ## Installation
 
-Note: we are messing with the standard ROS configuration to make a catkin 
-workspace within the IRIS\_V\_control repository for convenience reasons.
-
 This assumes you have already followed the tutorial to create a workspace
 with rosbuild selected, replacing all instances of "fuerte" with "hydro": <br />
 http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment
+
+### Dependencies
+libfreenect-dev
+ros-hydro-serial
+(add as discovered)
+
+### Conflicts
+ros-hydro-libfreenect* (Need the non-ROS libfreenect since the ROS version has a different header)
+
+### Instructions
 
 1)  `roscd`
 
