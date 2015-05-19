@@ -13,6 +13,7 @@ using namespace std;
 #include "sensor_msgs/Image.h"
 #include "sensor_msgs/PointCloud2.h"
 #include <sstream>
+#include <pcl/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 
@@ -45,21 +46,20 @@ ros::Publisher publisher;
 /**FOR CALLBACK**/
 int gradientIterator;
 std::vector<Map<float> > gradList; 
-Mat3f rotation;
 
-void callback(const sensor_msgs::Image::ConstPtr & image)
+void callback(const pcl::PCLPointCloud2ConstPtr& input)
 {
   Map<float> tempGrad(Vec2i(gradientHalfSizeX, gradientHalfSizeY));
   
-  rotation.x1 = cos30;
-  rotation.x2 = 0;
-  rotation.x3 = -sin30;
-  rotation.y1 = 0;
-  rotation.y2 = 1;
-  rotation.y3 = 0;
-  rotation.z1 = sin30;
-  rotation.z2 = 0;
-  rotation.z3 = cos30;
+//rotation.x1 = cos30;
+//rotation.x2 = 0;
+//rotation.x3 = -sin30;
+//rotation.y1 = 0;
+//rotation.y2 = 1;
+//rotation.y3 = 0;
+//rotation.z1 = sin30;
+//rotation.z2 = 0;
+//rotation.z3 = cos30;
 
   if(gradientIterator == numMaps)
     gradientIterator = 0;
@@ -75,49 +75,66 @@ void callback(const sensor_msgs::Image::ConstPtr & image)
   vector<Vec3f> pointCloud;
   pointCloud.resize(csk::dimX*csk::dimY); //make our pointcloud large enough
 
-  // need to copy data from image->data to a new vector
-  short unsigned int * imageData = new short unsigned int[pointCount];
+//// need to copy data from image->data to a new vector
+//short unsigned int * imageData = new short unsigned int[pointCount];
 
-  /**REMOVE INVALID POINTS FROM DEPTH DATA**/
-  for(int i = 0; i < pointCount; ++i)
-  {
-    int milli = csk::RawDepthToMilli(image->data[i]);
-    if(milli < minViewDist || milli > maxViewDist)
-      imageData[i] = 0;
-    else
-      imageData[i] = image->data[i];
-  }
+///**REMOVE INVALID POINTS FROM DEPTH DATA**/
+//for(int i = 0; i < pointCount; ++i)
+//{
+//  int milli = csk::RawDepthToMilli(image->data[i]);
+//  if(milli < minViewDist || milli > maxViewDist)
+//    imageData[i] = 0;
+//  else
+//    imageData[i] = image->data[i];
+//}
 
-  /**CREATE CARTESIAN POINT CLOUD**/
-  for(int y = 0; y<csk::dimY; ++y)
-  {
-    for(int x = 0; x<csk::dimX; ++x)
-    {
-       if(imageData[csk::GetCoord(x,y)] != 0)
-         pointCloud[csk::GetCoord(x,y)] = csk::GetCartCoord(x, y, imageData);
-    }
-  }
-  delete[] imageData;
+///**CREATE CARTESIAN POINT CLOUD**/
+//for(int y = 0; y<csk::dimY; ++y)
+//{
+//  for(int x = 0; x<csk::dimX; ++x)
+//  {
+//     if(imageData[csk::GetCoord(x,y)] != 0)
+//       pointCloud[csk::GetCoord(x,y)] = csk::GetCartCoord(x, y, imageData);
+//       ROS_INFO("[%d %d %d]", pointCloud[csk::GetCoord(x,y)].x,pointCloud[csk::GetCoord(x,y)].y,pointCloud[csk::GetCoord(x,y)].z);
+//  }
+//}
+//delete[] imageData;
+//pcl::PCLPointCloud2 pcl_pc2;
+//pcl_conversions::toPCL(*input,pcl_pc2);
+  pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromPCLPointCloud2(*input, *temp_cloud);
+
   
   /**POINT CLOUD ADJUSTED FOR PITCH AND ROLL**/
   for(int i = 0; i < pointCount; ++i)
   {
-    pointCloud[i] = rotation * pointCloud[i];
+    pointCloud[i].x = temp_cloud->points[i].z;
+    pointCloud[i].y = -temp_cloud->points[i].x;
+    pointCloud[i].z = -temp_cloud->points[i].y;
+    if (pointCloud[i].x != pointCloud[i].x || 
+        pointCloud[i].z > maxViewDist / 1000. || 
+        pointCloud[i].z < minViewDist / 1000.)
+    {
+      pointCloud[i] = Vec3f(0.0, 0.0, 0.0);
+    }
+//  pointCloud[i] = rotation * pointCloud[i];
+    pointCloud[i].x = 0.866025404 * pointCloud[i].x + 0.5 * pointCloud[i].z;
+    pointCloud[i].z = -0.5 * pointCloud[i].x + 0.866025404 * pointCloud[i].y;
   }
 
   /**POINT CLOUD UNITS ADJUSTED FOR HUMAN VIEWING**/
   //half decimeters (50 times larger than a millimeter is half a decimeter)
   //this also determines the representative size of the cells in the map
-  for(int i = 0; i<pointCount; ++i)
-  {
-    pointCloud[i].z *= 1. / cellSizeMillis;
-    if(onOdroid)
-      pointCloud[i].y *= -1. / cellSizeMillis;/**IF ON ODROID, FLIP IT**/
-    else
-      pointCloud[i].y *= 1. / cellSizeMillis;
+//for(int i = 0; i<pointCount; ++i)
+//{
+//  pointCloud[i].z *= 1. / cellSizeMillis;
+//  if(onOdroid)
+//    pointCloud[i].y *= -1. / cellSizeMillis;/**IF ON ODROID, FLIP IT**/
+//  else
+//    pointCloud[i].y *= 1. / cellSizeMillis;
 
-    pointCloud[i].x *= 1. / cellSizeMillis;
-  }
+//  pointCloud[i].x *= 1. / cellSizeMillis;
+//}
 
   /**CONVERT POINT CLOUD INTO HEIGHT MAP**/
   for(int i = 0; i<pointCount; ++i)
@@ -196,7 +213,7 @@ int main(int argc, char **argv)
   gradientHalfSizeX = int(maxViewDist / cellSizeMillis) + 5;
   gradientHalfSizeY = int(maxViewDist / cellSizeMillis) + 5;
   publisher = nh.advertise<sensor_msgs::PointCloud2>(topicName, bufferSize);
-  ros::Subscriber sub = nh.subscribe<sensor_msgs::Image>("/camera/depth/image_raw", 1, callback);
+  ros::Subscriber sub = nh.subscribe("/camera/depth/points", 1, callback);
   sizeGradientMap = sizeof(int8_t)*((gradientHalfSizeX*2)+1)*((gradientHalfSizeY*2)+1);
 
   for(int i = 0; i < numMaps; ++i)
