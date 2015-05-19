@@ -33,7 +33,7 @@ inline double pow2(double a) {return a * a;}
 // list of states for machine
 enum state {wait_to_start, localize, move_to_mine, mine, move_to_dump,
                 dump, manual};
-enum actuator_status {retracting, down, extending, up};
+enum actuator_status {down, moving, up}; //{retracting, down, extending, up};
 enum actuator_command : bool {DOWN = false, UP = true};
 enum paddle_status : bool {OFF = false, ON = true};
 
