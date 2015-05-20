@@ -8,8 +8,9 @@ grid:
 
 flags:
   onOdroid: False
-  useOpenGL: False
+  useOpenGL: True
+  output: True
 
-frameID: "/camera_frame"
+frame_id: "/kinect_link"
 
 topic: "/IRIS/obstacles"

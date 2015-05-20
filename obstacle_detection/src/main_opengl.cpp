@@ -58,6 +58,7 @@ const int sizeVideo = FREENECT_VIDEO_RGB_SIZE;//we need this much for the video 
 
 /**ROS**/
 string topicName; //this is the name the listener will look for
+bool output;
 const string myNodeName = "iris_obstacles_talker";
 unsigned int seq = 0;
 string frame_id;
@@ -155,7 +156,7 @@ void* thread_depth(void* arg)
         if(not depth_used && pDepth != NULL)//make sure we don't take an image with bad accelerometer data
         {
             if(downDirection.z == 0)
-                ROS_INFO("\nNo Data From Kinect Accelerometer!");
+                ROS_ERROR("\nNo Data From Kinect Accelerometer!");
 
             const int pointCount = csk::dimX*csk::dimY;
 
@@ -187,7 +188,6 @@ void* thread_depth(void* arg)
                 pointCloud[i] = pitchRoll*pointCloud[i];
             }
             /**POINT CLOUD UNITS ADJUSTED FOR HUMAN VIEWING**/
-            //half decimeters (50 times larger than a millimeter is half a decimeter)
             //this also determines the representative size of the cells in the map
             for(int i = 0; i<pointCount; ++i)
             {
@@ -203,11 +203,13 @@ void* thread_depth(void* arg)
             for(int i = 0; i<pointCount; ++i)
             {
                 if(height.getPoint(Vec2i(pointCloud[i].x, pointCloud[i].y)).value < pointCloud[i].z)
+                {
                     height.getPoint(Vec2i(pointCloud[i].x, pointCloud[i].y)).value = pointCloud[i].z;
+                }
             }
             /**REMOVE STRANGE VALUES FROM MAP (filter stuff)**/
             height.makeGradient(gradList[gradientIterator], cellStepTolerance);//tolerance
-            height.makeGradient(tempGrad, cellStepTolerance);///SHOULD USE COPY FIX ME HELP DEBUG=================
+            height.makeGradient(tempGrad, cellStepTolerance);///SHOULD USE COPY FIX ME HELP DEBUG
 
             /**PUBLISH GRADIENT TO ROS TOPIC**/
             if(ros::ok())
@@ -255,13 +257,15 @@ void* thread_depth(void* arg)
 
                 /**PUBLISH**/
                 publisher.publish(rosPointCloud);
-                ROS_INFO("I published %d obstacles!", numObstacles);
+                if (output)
+                    ROS_INFO("I published %d obstacles!", numObstacles);
                 ros::spinOnce();
 
             }
             else
             {
-                ROS_INFO("ROS NOT OK! 1");
+                if (output)
+                    ROS_INFO("ROS NOT OK! 1");
                 perror("ROS NOT OK! 2");
             }
 
@@ -392,7 +396,9 @@ int main(int argc, char **argv)
     ros::NodeHandle nh_("~");
     nh_.param<bool>("flags/onOdroid", onOdroid, false);
     nh_.param<bool>("flags/useOpenGL", useOpenGL, true);
+    nh_.param<bool>("flags/output", output, true);
     nh_.param<string>("frame_id", frame_id, "0");
+    ROS_INFO("Frame ID: %s", frame_id.c_str());
     nh_.param<string>("topic", topicName, "/IRIS/obstacles");
     nh_.param<int>("grid/num_maps", numMaps, 4);
     nh_.param<int>("grid/min_surrounding_obstacles", minObstacleGroup, 2);
