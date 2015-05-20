@@ -43,6 +43,7 @@
     <param name="max_forward_velocity"  value="0.5" />
     <param name="frame_id/parent"       value="/map" />
     <param name="frame_id/child"        value="/robot_link" />
+    <param name="mining_speed_scale"    value="0.5" />
   </node>
 
 

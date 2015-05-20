@@ -327,6 +327,14 @@ public:
       {
         command.command.paddle_status = ON;
       }
+      if (joy->buttons[7])
+      {
+        command.command.mining = true;
+      }
+      if (joy->buttons[6])
+      {
+        command.command.mining = false;
+      }
 
       double x = joy->axes[1];
       double z = joy->axes[0];

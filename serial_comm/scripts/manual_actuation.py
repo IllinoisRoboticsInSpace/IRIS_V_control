@@ -46,12 +46,15 @@ def callback_command(command):
     # convert speeds to [-1000,1000] integer
     left = left / max_x_velocity * 1000.
     right = -right / max_x_velocity * 1000.
+    if command.command.mining:
+        left = mining_scale * left
+        right = mining_scale * right
     if abs(left) > 1000:
         scale = abs(left) / 1000.
         left = left / scale
         right = right / scale
     if abs(right) > 1000: 
-        scale = abs(right) / 1000.
+        scale =0 abs(right) / 1000.
         right = right / scale
         left = left / scale
 
@@ -111,11 +114,13 @@ def main():
     global trigger_topic
     global use_serial
     global ser
+    global mining_scale
     rospy.init_node('serial_comm_python')
     max_x_velocity = rospy.get_param('~max_forward_velocity')
     use_serial = rospy.get_param('~use_serial')
     trigger_topic = rospy.get_param('~topic/trigger')
     command_topic = rospy.get_param('~topic/command')
+    mining_scale = rospy.get_param('~mining_speed_scale')
     rospy.Subscriber(command_topic, RobotCommandStamped, callback_command)
     rospy.Subscriber(trigger_topic, Bool, callback_trigger)
     rospy.Subscriber('/IRIS/joy_filtered', Joy, callback_joy)
